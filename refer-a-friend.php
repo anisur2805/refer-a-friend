@@ -11,12 +11,12 @@
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  */
 
-if ( !defined( 'ABSPATH' ) ) {
- exit;
-} 
+if (!defined('ABSPATH')) {
+    exit;
+}
 
 // Start or resume a session
-if ( ! session_id() ) {
+if (!session_id()) {
     session_start();
 }
 
@@ -25,22 +25,11 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use Hashids\Hashids;
 
-
-define( "HASHHIDE_SALT", "1e46c03#&227d3()a7_)_*@(!#");
-define( "HASHHIDE_RAND_LENGTH", 5);
-define( "HASHHIDE_RAND_ENCODE_MIN_LENGTH", 6);
-define( "HASHHIDE_RAND_STRING", "3d92a3c3587b5c7c8129ee3e6a077be647590154f889d19ffbcc029cbdabbb11");
-define( "HASHHIDE_RAND_CHARS", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTWVXYZ1234567890");
-
-// $hashids = new Hashids();
-
-// $user_id = get_current_user_id();
-// $hashids->encode( $user_id );
-
-/**
- * http://localhost:10019/?awraf=63f11b8701c06
- * http://wppro.test/?awraf=63f11b8701c06
-*/
+define("HASHHIDE_SALT", "1e46c03#&227d3()a7_)_*@(!#");
+define("HASHHIDE_RAND_LENGTH", 5);
+define("HASHHIDE_RAND_ENCODE_MIN_LENGTH", 6);
+define("HASHHIDE_RAND_STRING", "3d92a3c3587b5c7c8129ee3e6a077be647590154f889d19ffbcc029cbdabbb11");
+define("HASHHIDE_RAND_CHARS", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTWVXYZ1234567890");
 
 /**
  * Generate Referral Code
@@ -51,153 +40,197 @@ function generate_user_ref_uuid() {
     $uuid    = uniqid();
     $wpdb->update($wpdb->prefix . 'users', array('ref_uuid' => $uuid), array('ID' => $user_id));
     return $uuid;
-  }
+}
 //   add_action('user_register', 'generate_user_ref_uuid');
-  add_action('user_login', 'generate_user_ref_uuid');
+// add_action('user_login', 'generate_user_ref_uuid');
 
 /**
  * generate Links for referring
  */
 function ic_generate_referral_links() {
     $user_id = get_current_user_id();
-    $encoded = idRandEncode( $user_id);
-    
-    // $site_url       = get_site_url().'/?ref='.$encoded;
-    $site_url = add_query_arg(
-        array('ref' => $encoded),
-        site_url()
-    );
+    $encoded = idRandEncode($user_id);
+
+    $site_url       = get_site_url().'/?ref='.$encoded;
     return $site_url;
 }
 
-// die(ic_generate_referral_links());
-
 function idRandEncode($str) {
-    $hashids = new Hashids( HASHHIDE_SALT, 13);
-    return $hashids->encode( $str );
+    $hashids = new Hashids(HASHHIDE_SALT, 13);
+    return $hashids->encode($str);
 }
 
+function idRandDecode($str) {
+    $hashids = new Hashids(HASHHIDE_SALT, 13);
+    return $hashids->decode($str);
+}
 
-
-$user_id = get_current_user_id();
-
-//idRandEncode( $user_id );
-function idRandDecode($str)
-    {
-        $hashids = new Hashids( HASHHIDE_SALT, 13 );
-        return $hashids->decode( $str)[0];
-    }
-
-// idRandDecode( 1 );
-
-
-function add_column_user_table(){
+function add_column_user_table() {
     global $wpdb;
     $table_name = "{$wpdb->prefix}users";
     $get_rows   = $wpdb->get_row("SELECT * FROM $table_name");
 
-    if( ! isset($get_rows->testxyz)){
+    if (!isset($get_rows->testxyz)) {
         $wpdb->query("ALTER TABLE $table_name ADD COLUMN testxyz varchar(13) NOT NULL");
     }
-} 
+}
+// add_action('admin_init', 'add_column_user_table');
 
-add_action( 'admin_init', 'add_column_user_table');
-
-
-// 
-function check_refer_id_url(){ 
-    if( isset( $_GET['ref'] ) ) {
-
-
-    if( is_user_logged_in() ) {
-        wp_safe_redirect( home_url() . '/wp-admin' );
-        exit;
+function check_refer_id_url() {
+    if (isset($_REQUEST['ref'])) {
+        if (is_user_logged_in()) {            
+            wp_safe_redirect(home_url() . '/wp-admin/options-general.php?page=referral-options');
+            exit;
+        } else {
+            wp_redirect(home_url() . '/wp-login.php');
+            exit;
+        }
     }
+}
+// TODO: should be use user-register/ login/ admin_init
+add_action('init', 'check_refer_id_url');
+/**
+ * Show award message
+ */
+add_action('admin_notices', 'ic_show_award_message');
+function ic_show_award_message() {
+    // global $wpdb;
+    $user_id     = get_current_user_id();
+    $referred_id = idRandDecode( $user_id );
 
-    wp_redirect( home_url() . '/wp-login.php' );
-    exit;
-    
-    add_action('admin_notices', 'ic_show_award_message');
+    // var_dump( $referred_id );
+    // $referred_id = $wpdb->get_row(
+    //     $wpdb->prepare(
+    //         "SELECT  * FROM {$wpdb->prefix}ic_referral WHERE refer_id = %d", $referred_id
+    //     )
+    // );
+
+    $class      = 'notice notice-success';
+    $message    = 'hello';
+    // $message    = "You just been referred by {$referred_id->name}. You both receive £5. Once you register, you can do the same and get another £5 for every person you refer.";
+    if( $referred_id ) {
+    	printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), esc_html( $message ) );
+    }
 }
 
-    
+// Add redirect sub-menu page
+add_action( 'admin_menu', 'ic_admin_menu' );
+function ic_admin_menu() {
+		add_options_page(
+			__( 'Referred Details', ),
+			__( 'Referred Details', ),
+			'read',
+			'referral-options',
+			'referral_page_callback'
+		);
+	}
+function referral_page_callback(){
+    echo '<div class="wrap"><h1>' . get_admin_page_title() . '</h1></div>';
 }
 
-// // check_refer_id_url();
-// // add_filter( 'the_permalink', 'add_custom_query_param' );
+/**
+ * Create table for user referral
+ * on plugin activation period
+ */
+register_activation_hook( __FILE__, 'create_referral_links_table' );
+function create_referral_links_table() {
+    global $wpdb;
+    $charset_collate = $wpdb->get_charset_collate();
 
-function get_current_url() {
-    $page_url = 'http';
-    if ( isset( $_SERVER["HTTPS"] ) && $_SERVER["HTTPS"] == "on" ) {
-        $page_url .= "s";
+    if ( !function_exists( 'dbDelta' ) ) {
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
     }
-    $page_url .= "://";
-    if ( isset( $_SERVER["SERVER_PORT"] ) && ( $_SERVER["SERVER_PORT"] != "80" ) ) {
-        $page_url .= $_SERVER["SERVER_NAME"] . ":" . $_SERVER["SERVER_PORT"] . $_SERVER["REQUEST_URI"];
-    } else {
-        $page_url .= $_SERVER["SERVER_NAME"] . $_SERVER["REQUEST_URI"];
-    }
-    return $page_url;
-}
-$url = get_current_url();
-
-// add_custom_query_param( $url );
-// function add_custom_query_param( $url ) {
-//     $user_id = get_current_user_id();
-//     $encoded = idRandEncode( $user_id);
-
-//     $query_param = "ref=$encoded"; // replace with your desired query parameter
-//     // $query_param = "test=234"; // replace with your desired query parameter
-
-
-//     $url_parts = parse_url( $url );
-//     $url_query = isset( $url_parts['query'] ) ? $url_parts['query'] : '';
-//     if ( ! empty( $url_query ) ) {
-//         $url .= '&' . $query_param;
-//     } else {
-//         $url .= '?' . $query_param;
-//     }
-//     var_dump($url);
-//     return $url;
-// }
-
-
-
-$user_id = get_current_user_id();
-$encoded = idRandEncode( $user_id);
-
-$_SESSION['ref'] =  $encoded;
-
-function add_custom_query_param( $url ) {
-    $url_parts = parse_url( $url );
-
-    $url_query = isset( $url_parts['query'] ) ? $url_parts['query'] : '';
     
-    echo '<pre>';
-          print_r( $url_query );
-    echo '</pre>';
-    // if( isset( $url_query['ref'] ) && ! empty( $url_query['ref'] )) {
-    //     return;
+    // referral_links table
+    $schema = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}referral_links`(
+        id int(11) unsigned NOT NULL AUTO_INCREMENT,
+        uuid varchar(64) NOT NULL,
+        created_at timestamp NOT NULL,
+        user_id int(11) unsigned NOT NULL,
+        PRIMARY KEY (`id`)
+    ) $charset_collate";
+
+    dbDelta( $schema );
+
+    // user_referred table
+    // $schema = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}user_referred`(
+    //     id int(11) unsigned NOT NULL AUTO_INCREMENT,
+    //     accepted_user_id int unsigned NOT NULL,
+    //     referred_by_user_id int unsigned NOT NULL,
+    //     refer_links_id int unsigned NOT NULL,
+    //     PRIMARY KEY (`id`)
+    // ) $charset_collate";
+
+   
+
+    dbDelta( $schema );
+}
+
+// Expiry date 
+function ic_set_expiry_date( $expiry = 30 ){
+    $timestamp  = date('Y-m-d H:i:s');
+    $start_date = date($timestamp);
+    $expires    = strtotime( " + $expiry days", strtotime($timestamp));
+    $date_diff  = ($expires-strtotime($timestamp)) / 86400;
+
+    // echo "Start: ".$timestamp."<br>";
+    // echo "Expire: ".date('Y-m-d H:i:s', $expires)."<br>";
+    $days_left = round($date_diff, 0);
+
+    $user_id     = get_current_user_id(); 
+
+    if( $days_left < 1 ) {
+        // delete_user_meta( $user_id, 'referred_id' );
+    }
+ }
+
+// Insert links to table
+function ic_user_table_insert_data() {
+    global $wpdb;
+
+    $user_id = get_current_user_id();
+    $uuid    = idRandEncode( $user_id );
+
+    $data = [
+        'uuid'          => $uuid,
+        'created_at'    => current_time( 'mysql' ),
+        'user_id'       => $user_id
+    ];
+
+    $format     = [ '%d', '%s', '%d' ];
+
+    $current_user = wp_get_current_user();
+    $user_name    = $current_user->user_login;
+
+    // $wpdb->update( "{$wpdb->prefix}users", array( 'ref_uuids' => $ic_uuid ), array( 'ID' => $user_id ), $format, array('%d') );
+
+    // if( ! $user_name ) {
+        $inserted = $wpdb->insert( "{$wpdb->prefix}referral_links", $data, $format );
+    // } 
+    //else {
+    //     return $wpdb->update(
+    //         "{$wpdb->prefix}users",
+    //         array(
+    //             'ref_uuids' => $ic_uuid
+    //         ),
+    //         array(
+    //             'ID' => $user_id
+    //         ),
+    //         $format,
+    //         array('%d')
+    //     );
     // }
-    
-    if ( ! empty( $url_query ) ) {
-        $url .= '&';
-    } else {
-        $url .= '?';
+
+    if ( ! $inserted ) {
+        return new \WP_Error( 'failed-to-insert', __( 'Failed to insert' ) );
     }
 
-    // Check for the session variable and add it to the URL
-    if ( isset( $_SESSION['ref'] ) ) {
-        $url .= 'ref=' . $_SESSION['ref'];
-    }
+    // if( ! $update ) {
+    //     return new \WP_Error( 'failed-to-update', __( 'Failed to update' ) );
+    // }
 
-    echo '<pre>';
-          print_r( $url );
-    echo '</pre>';
-    return $url;
+    return $wpdb->insert_id;
 }
-// echo '<pre>';
-//       print_r( $_SESSION );
-// echo '</pre>';
-add_custom_query_param( $url );
-// add_filter( 'the_permalink', 'add_custom_query_param' );
+
+// TODO: this hooks should be user-login/register
+add_action('admin_init', 'ic_user_table_insert_data');
