@@ -1,0 +1,17 @@
+{
+    "name": "anis/test",
+    "autoload": {
+        "psr-4": {
+            "Anis\\Test\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "anisur2805",
+            "email": "anisur2805@gmail.com"
+        }
+    ],
+    "require": {
+        "hashids/hashids": "^3.0"
+    }
+}
