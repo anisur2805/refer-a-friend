@@ -1,0 +1,13 @@
+    $user = wp_get_current_user();
+    if ( $user && $user->exists() ) {
+        if ( is_user_logged_in() ) {
+            wp_safe_redirect( home_url( '/wp-admin/options-general.php?page=referral-options' ) );
+            exit();
+        } else {
+            wp_redirect( wp_login_url() );
+            exit();
+        }
+    } else {
+        wp_redirect( wp_registration_url() );
+        exit();
+    }

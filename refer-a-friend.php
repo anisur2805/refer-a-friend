@@ -82,28 +82,6 @@ function add_column_user_table() {
 }
 // add_action('admin_init', 'add_column_user_table');
 
-function check_refer_id_url() {
-    if (isset($_GET['ref'])) {
-        $_SESSION['referrer_id'] = $_GET['ref'];
-
-        $user = wp_get_current_user();
-        if ( $user && $user->exists() ) {
-            if ( is_user_logged_in() ) {
-                wp_safe_redirect( home_url( '/wp-admin/options-general.php?page=referral-options' ) );
-                exit();
-            } else {
-                wp_redirect( wp_login_url() );
-                exit();
-            }
-        } else {
-            wp_redirect( wp_registration_url() );
-            exit();
-        }
-    }
-}
-// TODO: should be use user-register/ login/ admin_init
-add_action('init', 'check_refer_id_url');
-
 /**
  * Show award message
  */
@@ -158,7 +136,6 @@ function create_referral_links_table() {
     // referral_links table
     $links_schema = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}referral_links`(
         id int(11) unsigned NOT NULL AUTO_INCREMENT,
-        uuid varchar(64) NOT NULL,
         created_at timestamp NOT NULL,
         expire_date timestamp NOT NULL,
         user_id int(11) unsigned NOT NULL,
@@ -192,39 +169,87 @@ function ic_set_expiry_date( $expiry = 30 ){
 
 
 // Insert referral links to table
-function ic_insert_data_referral_links() {
+function ic_create_referral_link() {
     global $wpdb;
 
-    $user_id = get_current_user_id();
-    $uuid    = idRandEncode( $user_id );
-    $expire  = ic_set_expiry_date();
-
-    // $expire_day = $wpdb->query("SELECT DATE_ADD( current_time( 'mysql' ), INTERVAL $expire DAY) ");
-
     $data = [
-        'uuid'          => $uuid,
-        'created_at'    => current_time( 'mysql' ),
-        'expire_date'   => $expire,
-        'user_id'       => $user_id
+        'created_at'    => date( 'Y-m-d H:i:s' ),
+        'expire_date'   => date( 'Y-m-d H:i:s', strtotime( ' +30 days' )),
+        'user_id'       => get_current_user_id()
     ];
 
-    echo '<pre>';
-          print_r( $data );
-    echo '</pre>';
-
-    // $format     = [ '%s', '%s', '%s', '%d' ];
-    $format     = [ '%s', '%s', '%d' ];
-    $inserted   = $wpdb->insert( "{$wpdb->prefix}referral_links", $data, $format );
+    $inserted   = $wpdb->insert( "{$wpdb->prefix}referral_links", $data, [ '%s', '%s', '%d' ] );
    
     if ( ! $inserted ) {
         return new \WP_Error( 'failed-to-insert', __( 'Failed to insert' ) );
     }
 
-    return $wpdb->insert_id;
+    return idRandEncode( $wpdb->insert_id );
 }
 
+// die( ic_create_referral_link());
+
 // TODO: this hooks should be user-login/register
-add_action('admin_init', 'ic_insert_data_referral_links');
+// add_action('admin_init', 'ic_create_referral_link');
+
+function check_refer_id_url() {
+    if ( !isset($_GET['ref']) || empty( $_GET['ref'] ) ) {
+        return;
+    }
+
+    $_SESSION['PHP_REFID'] = $_GET['ref'];
+    // die($_SESSION['PHP_REFID']);
+}
+// TODO: should be use user-register/ login/ admin_init
+// add_action('admin_init', 'check_refer_id_url');
+check_refer_id_url();
+
+// die( idRandEncode(42));
+// 42: vzXDxZEblJkdA
+function ic_user_has_referred( $user_id ){
+    global $wpdb;
+
+    if( $user_id === 0 ) {
+        return;
+    } 
+    if( ! isset( $_SESSION['PHP_REFID'] ) ) {
+        return;
+    }
+    $decode = idRandDecode( $_SESSION['PHP_REFID'] );
+    if( empty( $decode) || $decode[0] === 0 ) {
+        return;
+    }
+    $link = $wpdb->get_row( "SELECT * from {$wpdb->prefix}referral_links WHERE id = " . $decode[0] );
+    
+    if( empty( $link ) ) {
+        return;
+    }
+    // check date 
+    // if( $link->expire_date >=  ) 
+
+    $user = $wpdb->get_row( "SELECT * from {$wpdb->prefix}user_referred WHERE accepted_user_id = " . $user_id );
+    if( !empty( $user )) {
+        return;
+    }
+
+    // check referred by user id count == 5
+    $total_referred = $wpdb->get_row( "SELECT count(id) from {$wpdb->prefix}user_referred WHERE status = 1 AND referred_by_user_id = " . $link->user_id );
+
+    if( $total_referred > 5 ) {
+        return;
+    }
+
+    $data = [
+        'accepted_user_id'    => $user_id,
+        'referred_by_user_id' => $link->user_id,
+        'refer_links_id'      => $link->id,
+        'status'              => 0,
+    ];
+    $inserted = $wpdb->insert( "{$wpdb->prefix}user_referred", $data, [ '%d', '%d', '%d' ] );
+    return $inserted->insert_id;
+}
+
+add_action( 'user_register', 'ic_user_has_referred' );
 
 // Insert user referred data
 function ic_insert_data_user_referred() {
@@ -241,11 +266,8 @@ function ic_insert_data_user_referred() {
     $data = [
         'accepted_user_id'    => $accepted_user_id,
         'referred_by_user_id' => $referrer_id,
-        // 'refer_links_id'      => $uuid,
         'refer_links_id'      => $refer_links_id->id,
     ];
-
- 
 
     $format     = [ '%d', '%d', '%d' ];
     $inserted   = $wpdb->insert( "{$wpdb->prefix}user_referred", $data, $format );
@@ -256,7 +278,6 @@ function ic_insert_data_user_referred() {
 
     return $wpdb->insert_id;
 }
-
 // TODO: this hooks should be user-login/register
 add_action('admin_init', 'ic_insert_data_user_referred');
 
@@ -266,11 +287,10 @@ function get_referred_data(){
 
     if( isset( $_SESSION['referrer_id'] ) ) {
         $data = $_SESSION['referrer_id'];
+        $refer_id = idRandDecode( $data );
+        return $refer_id[0];
     }
-    $id = $wpdb->get_row( "SELECT user_id FROM {$wpdb->prefix}referral_links");
-    return $id->user_id;
 }
-
 // get_referred_data();
 add_action('init', 'get_referred_data');
 
@@ -285,7 +305,7 @@ function show_register_user_message() {
     }
 }
 // add_action( 'init', 'show_register_user_message' );
-
+// link: 26pDbLAX7wJdg, oEeQ27NB7K0jB
 /**
  * Show resister user welcome message
  */
@@ -307,3 +327,9 @@ function show_custom_message() {
     $allowed_html = array( 'strong'  => array() );
     printf( '<div class="%1$s" id="%2$s"><p>%3$s</p></div>', esc_attr( $class ), esc_attr( $id ), wp_kses( $message, $allowed_html ) );
 }
+
+// TODO: need to update status to 1 when verify email and age
+// update that specific user status
+
+// TODO: wp_user_referred table should check the email verification date/time 
+// 
