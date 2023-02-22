@@ -23,6 +23,12 @@ if (!session_id()) {
 require ABSPATH . '/wp-includes/pluggable.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
+function ic_enqueue_styles() {
+    wp_enqueue_style( 'ic-styles', plugins_url( 'assets/style.css', __FILE__ ) );
+    wp_enqueue_script( 'ic-main', plugins_url( 'assets/main.js', __FILE__ ), array('jquery' ), time(), true );
+}
+add_action( 'wp_enqueue_scripts', 'ic_enqueue_styles' );
+
 use Hashids\Hashids;
 
 define("HASHHIDE_SALT", "1e46c03#&227d3()a7_)_*@(!#");
@@ -77,40 +83,48 @@ function add_column_user_table() {
 // add_action('admin_init', 'add_column_user_table');
 
 function check_refer_id_url() {
-    if (isset($_REQUEST['ref'])) {
-        if (is_user_logged_in()) {            
-            wp_safe_redirect(home_url() . '/wp-admin/options-general.php?page=referral-options');
-            exit;
+    if (isset($_GET['ref'])) {
+        $_SESSION['referrer_id'] = $_GET['ref'];
+
+        $user = wp_get_current_user();
+        if ( $user && $user->exists() ) {
+            if ( is_user_logged_in() ) {
+                wp_safe_redirect( home_url( '/wp-admin/options-general.php?page=referral-options' ) );
+                exit();
+            } else {
+                wp_redirect( wp_login_url() );
+                exit();
+            }
         } else {
-            wp_redirect(home_url() . '/wp-login.php');
-            exit;
+            wp_redirect( wp_registration_url() );
+            exit();
         }
     }
 }
 // TODO: should be use user-register/ login/ admin_init
 add_action('init', 'check_refer_id_url');
+
 /**
  * Show award message
  */
-add_action('admin_notices', 'ic_show_award_message');
+// add_action('admin_notices', 'ic_show_award_message');
 function ic_show_award_message() {
-    // global $wpdb;
+    global $wpdb;
     $user_id     = get_current_user_id();
-    $referred_id = idRandDecode( $user_id );
+    $referred_id = get_referred_data();
 
-    // var_dump( $referred_id );
-    // $referred_id = $wpdb->get_row(
-    //     $wpdb->prepare(
-    //         "SELECT  * FROM {$wpdb->prefix}ic_referral WHERE refer_id = %d", $referred_id
-    //     )
-    // );
+    $user_name = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT  display_name FROM {$wpdb->prefix}users WHERE ID = %d", $referred_id
+        )
+    ); 
 
     $class      = 'notice notice-success';
-    $message    = 'hello';
-    // $message    = "You just been referred by {$referred_id->name}. You both receive £5. Once you register, you can do the same and get another £5 for every person you refer.";
-    if( $referred_id ) {
-    	printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), esc_html( $message ) );
-    }
+    $message    = "You just been referred by <strong>{$user_name->display_name}</strong>. You both receive £5. Once you register, you can do the same and get another £5 for every person you refer.";
+    $allowed_html = array( 'strong'  => array() );
+    // if( $referred_id ) {
+    	printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), wp_kses( $message, $allowed_html ) );
+    // }
 }
 
 // Add redirect sub-menu page
@@ -142,95 +156,154 @@ function create_referral_links_table() {
     }
     
     // referral_links table
-    $schema = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}referral_links`(
+    $links_schema = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}referral_links`(
         id int(11) unsigned NOT NULL AUTO_INCREMENT,
         uuid varchar(64) NOT NULL,
         created_at timestamp NOT NULL,
+        expire_date timestamp NOT NULL,
         user_id int(11) unsigned NOT NULL,
         PRIMARY KEY (`id`)
     ) $charset_collate";
 
-    dbDelta( $schema );
+    dbDelta( $links_schema );
 
     // user_referred table
-    // $schema = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}user_referred`(
-    //     id int(11) unsigned NOT NULL AUTO_INCREMENT,
-    //     accepted_user_id int unsigned NOT NULL,
-    //     referred_by_user_id int unsigned NOT NULL,
-    //     refer_links_id int unsigned NOT NULL,
-    //     PRIMARY KEY (`id`)
-    // ) $charset_collate";
-
-   
+    $schema = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}user_referred`(
+        id int(11) unsigned NOT NULL AUTO_INCREMENT,
+        accepted_user_id int unsigned NOT NULL,
+        referred_by_user_id int unsigned NOT NULL,
+        refer_links_id int(11) NOT NULL,
+        PRIMARY KEY (`id`)
+    ) $charset_collate";
 
     dbDelta( $schema );
 }
 
 // Expiry date 
 function ic_set_expiry_date( $expiry = 30 ){
-    $timestamp  = date('Y-m-d H:i:s');
-    $start_date = date($timestamp);
+    $timestamp  = date( 'Y-m-d H:i:s' );
     $expires    = strtotime( " + $expiry days", strtotime($timestamp));
-    $date_diff  = ($expires-strtotime($timestamp)) / 86400;
-
-    // echo "Start: ".$timestamp."<br>";
-    // echo "Expire: ".date('Y-m-d H:i:s', $expires)."<br>";
+    $date_diff  = ( $expires - strtotime( $timestamp ) ) / 86400;
     $days_left = round($date_diff, 0);
 
-    $user_id     = get_current_user_id(); 
+    $user_id     = get_current_user_id();
+    return $days_left;
+}
 
-    if( $days_left < 1 ) {
-        // delete_user_meta( $user_id, 'referred_id' );
-    }
- }
 
-// Insert links to table
-function ic_user_table_insert_data() {
+// Insert referral links to table
+function ic_insert_data_referral_links() {
     global $wpdb;
 
     $user_id = get_current_user_id();
     $uuid    = idRandEncode( $user_id );
+    $expire  = ic_set_expiry_date();
+
+    // $expire_day = $wpdb->query("SELECT DATE_ADD( current_time( 'mysql' ), INTERVAL $expire DAY) ");
 
     $data = [
         'uuid'          => $uuid,
         'created_at'    => current_time( 'mysql' ),
+        'expire_date'   => $expire,
         'user_id'       => $user_id
     ];
 
-    $format     = [ '%d', '%s', '%d' ];
+    echo '<pre>';
+          print_r( $data );
+    echo '</pre>';
 
-    $current_user = wp_get_current_user();
-    $user_name    = $current_user->user_login;
-
-    // $wpdb->update( "{$wpdb->prefix}users", array( 'ref_uuids' => $ic_uuid ), array( 'ID' => $user_id ), $format, array('%d') );
-
-    // if( ! $user_name ) {
-        $inserted = $wpdb->insert( "{$wpdb->prefix}referral_links", $data, $format );
-    // } 
-    //else {
-    //     return $wpdb->update(
-    //         "{$wpdb->prefix}users",
-    //         array(
-    //             'ref_uuids' => $ic_uuid
-    //         ),
-    //         array(
-    //             'ID' => $user_id
-    //         ),
-    //         $format,
-    //         array('%d')
-    //     );
-    // }
-
+    // $format     = [ '%s', '%s', '%s', '%d' ];
+    $format     = [ '%s', '%s', '%d' ];
+    $inserted   = $wpdb->insert( "{$wpdb->prefix}referral_links", $data, $format );
+   
     if ( ! $inserted ) {
         return new \WP_Error( 'failed-to-insert', __( 'Failed to insert' ) );
     }
-
-    // if( ! $update ) {
-    //     return new \WP_Error( 'failed-to-update', __( 'Failed to update' ) );
-    // }
 
     return $wpdb->insert_id;
 }
 
 // TODO: this hooks should be user-login/register
-add_action('admin_init', 'ic_user_table_insert_data');
+add_action('admin_init', 'ic_insert_data_referral_links');
+
+// Insert user referred data
+function ic_insert_data_user_referred() {
+    global $wpdb;
+
+    $user_id            = get_current_user_id();
+    $uuid               = idRandEncode( $user_id );
+    $decode_id          = idRandDecode( $uuid );
+
+    $accepted_user_id   = get_current_user_id();
+    $referrer_id        = get_referred_data();
+    $refer_links_id     = $wpdb->get_row( "SELECT id FROM {$wpdb->prefix}referral_links");
+
+    $data = [
+        'accepted_user_id'    => $accepted_user_id,
+        'referred_by_user_id' => $referrer_id,
+        // 'refer_links_id'      => $uuid,
+        'refer_links_id'      => $refer_links_id->id,
+    ];
+
+ 
+
+    $format     = [ '%d', '%d', '%d' ];
+    $inserted   = $wpdb->insert( "{$wpdb->prefix}user_referred", $data, $format );
+
+    if ( ! $inserted ) {
+        return new \WP_Error( 'failed-to-insert', __( 'Failed to insert' ) );
+    }
+
+    return $wpdb->insert_id;
+}
+
+// TODO: this hooks should be user-login/register
+add_action('admin_init', 'ic_insert_data_user_referred');
+
+// Get Who referred
+function get_referred_data(){
+    global $wpdb;
+
+    if( isset( $_SESSION['referrer_id'] ) ) {
+        $data = $_SESSION['referrer_id'];
+    }
+    $id = $wpdb->get_row( "SELECT user_id FROM {$wpdb->prefix}referral_links");
+    return $id->user_id;
+}
+
+// get_referred_data();
+add_action('init', 'get_referred_data');
+
+/**
+ * Check currently on 'my-account' page and 
+ * show the subscriber a message
+ */
+function show_register_user_message() {
+    global $wp;
+    $request = explode( '/', $wp->request );
+    if( end($request) == 'my-account' && is_account_page() ){
+    }
+}
+// add_action( 'init', 'show_register_user_message' );
+
+/**
+ * Show resister user welcome message
+ */
+add_action( 'woocommerce_account_content', 'show_custom_message', 7 );
+function show_custom_message() {
+    global $wpdb;
+    $user_id     = get_current_user_id();
+    $referred_id = get_referred_data();
+
+    $user_name = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT display_name FROM {$wpdb->prefix}users WHERE ID = %d", $referred_id
+        )
+    );
+
+    $class      = 'ic-referred-message';
+    $id         = 'ic-referred-message';
+    $message    = "You just been referred by <strong>{$user_name->display_name}</strong>. You both receive £5. Once you register, you can do the same and get another £5 for every person you refer.";
+    $allowed_html = array( 'strong'  => array() );
+    printf( '<div class="%1$s" id="%2$s"><p>%3$s</p></div>', esc_attr( $class ), esc_attr( $id ), wp_kses( $message, $allowed_html ) );
+}
