@@ -21,13 +21,10 @@ if (!session_id()) {
 }
 
 require ABSPATH . '/wp-includes/pluggable.php';
-require_once __DIR__ . '/vendor/autoload.php';
 
-function ic_enqueue_styles() {
-    wp_enqueue_style( 'ic-styles', plugins_url( 'assets/style.css', __FILE__ ) );
-    wp_enqueue_script( 'ic-main', plugins_url( 'assets/main.js', __FILE__ ), array('jquery' ), time(), true );
+if ( file_exists( dirname( __FILE__ ) . '/vendor/autoload.php' ) ) {
+	require_once dirname( __FILE__ ) . '/vendor/autoload.php';
 }
-add_action( 'wp_enqueue_scripts', 'ic_enqueue_styles' );
 
 use Hashids\Hashids;
 
@@ -49,6 +46,12 @@ function generate_user_ref_uuid() {
 }
 //   add_action('user_register', 'generate_user_ref_uuid');
 // add_action('user_login', 'generate_user_ref_uuid');
+
+function ic_enqueue_styles() {
+    wp_enqueue_style( 'ic-styles', plugins_url( 'assets/style.css', __FILE__ ) );
+    wp_enqueue_script( 'ic-main', plugins_url( 'assets/main.js', __FILE__ ), array('jquery' ), time(), true );
+}
+add_action( 'wp_enqueue_scripts', 'ic_enqueue_styles' );
 
 /**
  * generate Links for referring
@@ -111,7 +114,7 @@ function ic_admin_menu() {
 		add_options_page(
 			__( 'Referred Details', ),
 			__( 'Referred Details', ),
-			'read',
+			'manage_options',
 			'referral-options',
 			'referral_page_callback'
 		);
@@ -150,6 +153,10 @@ function create_referral_links_table() {
         accepted_user_id int unsigned NOT NULL,
         referred_by_user_id int unsigned NOT NULL,
         refer_links_id int(11) NOT NULL,
+        created_at timestamp NOT NULL,
+        updated_at timestamp NOT NULL,
+        status tinyint NOT NULL DEFAULT 0,
+        total_rewards int(20) DEFAULT 0,
         PRIMARY KEY (`id`)
     ) $charset_collate";
 
@@ -243,9 +250,12 @@ function ic_user_has_referred( $user_id ){
         'accepted_user_id'    => $user_id,
         'referred_by_user_id' => $link->user_id,
         'refer_links_id'      => $link->id,
+        'created_at'          => date( 'Y-m-d H:i:s' ),
+        'updated_at'          => '',
         'status'              => 0,
+        'total_rewards'       => 0
     ];
-    $inserted = $wpdb->insert( "{$wpdb->prefix}user_referred", $data, [ '%d', '%d', '%d' ] );
+    $inserted = $wpdb->insert( "{$wpdb->prefix}user_referred", $data, [ '%d', '%d', '%d', '%s', '%s', '%d', '%d' ] );
     return $inserted->insert_id;
 }
 
@@ -306,18 +316,27 @@ function show_register_user_message() {
 }
 // add_action( 'init', 'show_register_user_message' );
 // link: 26pDbLAX7wJdg, oEeQ27NB7K0jB
+
 /**
  * Show resister user welcome message
  */
-add_action( 'woocommerce_account_content', 'show_custom_message', 7 );
+
+function ic_check_admin() {
+    if( ! is_admin() ) {
+        add_action( 'woocommerce_account_content', 'show_custom_message', 7 );
+    }
+}
+ic_check_admin();
+
 function show_custom_message() {
     global $wpdb;
-    $user_id     = get_current_user_id();
-    $referred_id = get_referred_data();
-
-    $user_name = $wpdb->get_row(
+    if( !isset( $_SESSION['PHP_REFID'] ) ) {
+        return;
+    }
+    $referred_id = idRandDecode( $_SESSION['PHP_REFID'] );
+    $user_name   = $wpdb->get_row(
         $wpdb->prepare(
-            "SELECT display_name FROM {$wpdb->prefix}users WHERE ID = %d", $referred_id
+            "SELECT * FROM {$wpdb->prefix}users WHERE ID = %d", $referred_id
         )
     );
 
@@ -328,8 +347,50 @@ function show_custom_message() {
     printf( '<div class="%1$s" id="%2$s"><p>%3$s</p></div>', esc_attr( $class ), esc_attr( $id ), wp_kses( $message, $allowed_html ) );
 }
 
-// TODO: need to update status to 1 when verify email and age
-// update that specific user status
+// Set status and updated_at column when user verify age and email
+function ic_update_user_status(){
+    global $wpdb;
+    $id             = get_current_user_id();
+	$email_verified = get_user_meta( $id, 'wcemailverified', true );
+    $age_verified   = get_user_meta( $id, 'one_acc_woo_av_status', true);
+    if( $email_verified && 'av_success' == $age_verified ) {
 
-// TODO: wp_user_referred table should check the email verification date/time 
-// 
+        $old_rewards   = get_total_points( $id );
+
+        $wpdb->update(
+            $wpdb->prefix . 'user_referred',
+            array(
+                'status'        => 1, 
+                'updated_at'    => date( 'Y-m-d H:i:s'), 
+                'total_rewards' => (int) $old_rewards + 500
+            ),
+            array('accepted_user_id' => $id),
+            array('%s', '%s', '%d'),
+            array('%s')
+        );
+        // die( $wpdb->last_query);
+    }
+}
+
+ic_update_user_status();
+
+function get_total_points( $user_id ) {
+    global $wpdb;
+    return $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT total_rewards FROM {$wpdb->prefix}user_referred WHERE accepted_user_id = %d", $user_id
+        )
+    ); 
+}
+
+// die( get_total_points( $user_id ) );
+
+function ic_calculate_points_to_pound() {
+    $id             = get_current_user_id();
+    $points = get_total_points( $id );
+
+    die($points);
+
+}
+
+// ic_calculate_points_to_pound();
