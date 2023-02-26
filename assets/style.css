@@ -5,3 +5,41 @@
     margin-bottom: 15px;
     color: #fff;
 }
+
+#ic_copy-to-clipboard-wrapper p.limit-over {
+    padding: 6px 10px !important;
+    background: #f00;
+    color: #fff;
+    border-radius: 5px;
+    margin: 10px 0 !important;
+}
+
+#ic_copy-to-clipboard-wrapper .ic_form_group {
+    display: flex;
+    align-items: center;
+}
+
+#ic_copy-to-clipboard-wrapper .ic_form_group button.ic-button {
+    margin-left: 15px;
+    border: 0;
+    flex: 1;
+    padding: 10px;
+    box-sizing: border-box;
+    height: 48px;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+#ic_copy-to-clipboard-wrapper .ic_form_group input {
+    flex: 3;
+}
+
+#ic_copy-to-clipboard-wrapper .ic_form_group button.ic-button:not(:disabled) {
+    cursor: pointer;
+}
+
+#ic_copy-to-clipboard-wrapper .ic_form_group button.ic-button:not(:disabled):hover {
+    background: #000;
+    color: #fff;
+}
