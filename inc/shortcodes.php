@@ -70,6 +70,7 @@ function ic_email_share() {
     return $output;
 }
 add_action('wp_ajax_ic_send_email', 'ic_send_email');
+add_action('wp_ajax_nopriv_ic_send_email', 'ic_send_email');
 
 function ic_send_email() {
     $to = 'anisur2805@gmail.com';
@@ -78,4 +79,5 @@ function ic_send_email() {
     $headers = array('Content-Type: text/html; charset=UTF-8');
 
     wp_mail($to, $subject, $message, $headers);
+    die;
 }

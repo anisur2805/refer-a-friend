@@ -24,15 +24,18 @@
     }
 
     $(document).ready(function() {
-        $('#send-email').click(function() {
-          $.ajax({
-            type: "POST",
-            url: icAjaxHandler.ajaxUrl,
-            action: 'ic_send_email',
-            success: function(data) {
-              alert(data); // Replace this with any code you want to run when the email is sent successfully
+        $('#send_email').click(function() {
+          console.log( 'hello' );
+          var data = {
+            action: 'ic_send_email'
+          }
+          $.post(
+            icAjaxHandler.ajaxUrl,
+            data,
+            function(response) {
+              alert(response); // Replace this with any code you want to run when the email is sent successfully
             }
-          });
+          );
         });
       });
 })(jQuery);

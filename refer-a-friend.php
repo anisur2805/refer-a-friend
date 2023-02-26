@@ -115,7 +115,7 @@ function create_referral_links_table() {
         created_at timestamp NOT NULL,
         updated_at timestamp NOT NULL,
         status tinyint NOT NULL DEFAULT 0,
-        total_points tinyint DEFAULT 0,
+        total_points int(11) NOT NULL DEFAULT 0,
         PRIMARY KEY (`id`)
     ) $charset_collate";
 
@@ -320,7 +320,7 @@ function ic_update_user_status() {
             array(
                 'status'        => 1,
                 'updated_at'    => date( 'Y-m-d H:i:s' ),
-                'total_points' => $old_rewards + 1000,
+                'total_points' => $old_rewards->total_points + 1000,
             ),
             array( 'accepted_user_id' => $id ),
             array( '%s', '%s', '%d' ),
@@ -356,3 +356,20 @@ ic_calculate_points_to_pound();
 
 
 // session_destroy();
+
+function check_referrer_purchase_minimum_5_pound() {
+    $user_id = 3;
+    $customer_orders = wc_get_orders( array(
+        'customer_id' => $user_id,
+        'status' => array( 'wc-completed', 'wc-processing' )
+    ) );
+    $total_spent = 0;
+    foreach ( $customer_orders as $order ) {
+        foreach ( $order->get_items() as $item ) {
+            $total_spent += $item->get_total();
+        }
+    }
+    $purchase = wc_price($total_spent);
+}
+
+add_action('init', 'check_referrer_purchase_minimum_5_pound');
