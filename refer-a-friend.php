@@ -10,7 +10,6 @@
  * License:     GPL v2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  */
-
 if ( !defined( 'ABSPATH' ) ) {
     exit;
 }
@@ -37,7 +36,7 @@ define( "HASHHIDE_RAND_CHARS", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTWV
 
 require_once plugin_dir_path( __FILE__ ) . 'inc/shortcodes.php';
 require_once plugin_dir_path( __FILE__ ) . 'inc/woocom.php';
-require_once plugin_dir_path( __FILE__ ) . 'inc/ITC_Subscribers_List_Table.php';
+require_once plugin_dir_path( __FILE__ ) . 'inc/Subscribers_List_Table.php';
 
 function ic_enqueue_styles() {
     wp_enqueue_style( 'ic-styles', plugins_url( 'assets/style.css', __FILE__ ) );
@@ -84,11 +83,11 @@ function ic_admin_menu() {
 function referral_page_callback() { ?>
     <div class="wrap">
         <h1><?php echo get_admin_page_title(); ?> </h1>
-        <?php $itc_subscriber_table = new ITC_Subscribers_List_Table(); ?>
+        <?php $itc_subscriber_table = new Subscribers_List_Table(); ?>
         <form id="art-search-form" method="GET">
             <?php
                 $itc_subscriber_table->prepare_items();
-                $itc_subscriber_table->search_box('search', 'search_id');
+                // $itc_subscriber_table->search_box('search', 'search_id');
                 $itc_subscriber_table->display();
             ?>
         </form>
@@ -220,6 +219,10 @@ function ic_user_has_referred() {
     //     die;
     // }
 
+    if( is_admin() ) {
+        return;
+    }
+
     // check referred by user id count == 5
     $total_referred = $wpdb->get_row( "SELECT count(id) from {$wpdb->prefix}user_referred WHERE status = 1 AND referred_by_user_id = " . $link->user_id );
 
@@ -246,6 +249,9 @@ add_action( 'init', 'ic_user_has_referred' );
 // Insert user referred data
 function ic_insert_data_user_referred() {
     global $wpdb;
+    if( ! is_login() && ! current_user_can('Subscriber') ) {
+        return;
+    }
 
     $user_id          = get_current_user_id();
     $uuid             = idRandEncode( $user_id );
@@ -254,9 +260,6 @@ function ic_insert_data_user_referred() {
     $referrer_id      = get_referred_data();
     $refer_links_id   = $wpdb->get_row( "SELECT * FROM {$wpdb->prefix}referral_links" );
 
-    if( is_admin() ) {
-        return;
-    }
     $data = [
         'accepted_user_id'    => $accepted_user_id,
         'referred_by_user_id' => $referrer_id,
@@ -352,6 +355,7 @@ function ic_update_user_status() {
                 'updated_at'    => date( 'Y-m-d H:i:s' ),
                 // 'total_points' => $old_rewards->total_points + 500,
                 'total_points' => $old_rewards + 500,
+                // 'total_points' => 'total_points' + 500,
             ),
             array( 'accepted_user_id' => $id ),
             array( '%s', '%s', '%d' ),
