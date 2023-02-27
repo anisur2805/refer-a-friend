@@ -20,7 +20,7 @@ function ic_copy_to_clipboard( $atts, $content = ''){
             <input readonly type="text" id="invite_friend" name="invite_friend" class="form-control" placeholder="" value="'. $site_url.'" />
             <button type="button" id="copy-referral-code" class="ic-button" '.$button_attr.'>Copy link to Clipboard</button>
         </div>
-        <p class="limit-over">You already referred to 5 persons this year. You can\'t refer anymore in this year.</p>';
+        <p class="limit-over">You already referred to '.$total_rewards.' persons this year. You can\'t refer anymore in this year.</p>';
     $output .= '</form> </div>';
 
     $output .= ob_get_clean();
@@ -66,17 +66,18 @@ function ic_email_share() {
     //     $wpdb->prepare( "SELECT total_points FROM {$wpdb->prefix}user_referred WHERE referred_by_user_id = %d", $user_id )
     // );
     $output = '';
-    $output .= '<button id="send_email"><i class="icon-default-style fa fa-envelope-o extra-color-2"></i> Email</button>';
+    $output .= '<a href="" id="send_email"><i class="icon-default-style fa fa-envelope-o extra-color-2"></i> Email</a>';
     return $output;
 }
 add_action('wp_ajax_ic_send_email', 'ic_send_email');
-add_action('wp_ajax_nopriv_ic_send_email', 'ic_send_email');
+// add_action('wp_ajax_nopriv_ic_send_email', 'ic_send_email');
 
 function ic_send_email() {
-    $to = 'anisur2805@gmail.com';
-    $subject = 'Test Email';
-    $message = 'This is a test email sent from WordPress.';
-    $headers = array('Content-Type: text/html; charset=UTF-8');
+    $to             = 'anisur2805@gmail.com';
+    $subject        = 'Test Email';
+    $refer_link     = ic_generate_referral_links();
+    $message        = 'This is a refer mail. Please open the link to register and you will get 500 points. Here is the link: ' . esc_url( $refer_link);
+    $headers        = array('Content-Type: text/html; charset=UTF-8');
 
     wp_mail($to, $subject, $message, $headers);
     die;

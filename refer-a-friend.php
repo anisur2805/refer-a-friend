@@ -21,6 +21,7 @@ if ( !session_id() ) {
 }
 
 require ABSPATH . '/wp-includes/pluggable.php';
+include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
 
 if ( file_exists( dirname( __FILE__ ) . '/vendor/autoload.php' ) ) {
     require_once dirname( __FILE__ ) . '/vendor/autoload.php';
@@ -35,6 +36,8 @@ define( "HASHHIDE_RAND_STRING", "3d92a3c3587b5c7c8129ee3e6a077be647590154f889d19
 define( "HASHHIDE_RAND_CHARS", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTWVXYZ1234567890" );
 
 require_once plugin_dir_path( __FILE__ ) . 'inc/shortcodes.php';
+require_once plugin_dir_path( __FILE__ ) . 'inc/woocom.php';
+require_once plugin_dir_path( __FILE__ ) . 'inc/ITC_Subscribers_List_Table.php';
 
 function ic_enqueue_styles() {
     wp_enqueue_style( 'ic-styles', plugins_url( 'assets/style.css', __FILE__ ) );
@@ -78,8 +81,18 @@ function ic_admin_menu() {
     );
 }
 
-function referral_page_callback() {
-    echo '<div class="wrap"><h1>' . get_admin_page_title() . '</h1></div>';
+function referral_page_callback() { ?>
+    <div class="wrap">
+        <h1><?php echo get_admin_page_title(); ?> </h1>
+        <?php $itc_subscriber_table = new ITC_Subscribers_List_Table(); ?>
+        <form id="art-search-form" method="GET">
+            <?php
+                $itc_subscriber_table->prepare_items();
+                $itc_subscriber_table->search_box('search', 'search_id');
+                $itc_subscriber_table->display();
+            ?>
+        </form>
+    </div> <?php
 }
 
 /**
@@ -138,9 +151,9 @@ function ic_create_referral_link() {
             'user_id'     => $id,
         ];
         $inserted = $wpdb->insert( "{$wpdb->prefix}referral_links", $data, ['%s', '%s', '%d'] );
-    }
-    if ( !$inserted ) {
-        return new \WP_Error( 'failed-to-insert', __( 'Failed to insert' ) );
+        if ( !$inserted ) {
+            return new \WP_Error( 'failed-to-insert', __( 'Failed to insert' ) );
+        }
     }
 
     return idRandEncode( $wpdb->insert_id );
@@ -163,35 +176,49 @@ function check_refer_id_url() {
 // add_action('admin_init', 'check_refer_id_url');
 check_refer_id_url();
 
-// die( idRandEncode(4));
+// die( idRandEncode(46));
 // 42: vzXDxZEblJkdA
-function ic_user_has_referred( $user_id ) {
+function ic_user_has_referred() {
     global $wpdb;
 
-    if ( $user_id === 0 ) {
+    $user_id = get_current_user_id();
+    if ( $user_id == 0 ) {
         return;
     }
+
     if ( !isset( $_SESSION['PHP_REFID'] ) ) {
         return;
     }
+
     $decode = idRandDecode( $_SESSION['PHP_REFID'] );
+    
     if ( empty( $decode ) || $decode[0] === 0 ) {
         return;
     }
-    $link = $wpdb->get_row( "SELECT * from {$wpdb->prefix}referral_links WHERE id = " . $decode[0] );
+    $link = $wpdb->get_row( "SELECT * from {$wpdb->prefix}referral_links WHERE user_id = " . $decode[0] );
 
     if ( empty( $link ) ) {
         return;
     }
-    // check date
-    // if( $link->expire_date >= $link->created_at ) {
-    //     return;
-    // }
 
-    $user = $wpdb->get_row( "SELECT * from {$wpdb->prefix}user_referred WHERE accepted_user_id = " . $user_id );
-    if ( !empty( $user ) ) {
+    if( $link->user_id == NULL ) {
         return;
     }
+    // check date
+    if( $link->expire_date > $link->created_at ) {
+        return;
+    }
+
+    // TODO: gul
+    // $user = $wpdb->get_row( "SELECT * from {$wpdb->prefix}user_referred WHERE referred_by_user_id = " . $user_id );
+    // if ( ! empty( $user ) ) {
+    //     return;
+    // } else {
+    //     echo '<pre>';
+    //           print_r( $user );
+    //     echo '</pre>';
+    //     die;
+    // }
 
     // check referred by user id count == 5
     $total_referred = $wpdb->get_row( "SELECT count(id) from {$wpdb->prefix}user_referred WHERE status = 1 AND referred_by_user_id = " . $link->user_id );
@@ -227,6 +254,9 @@ function ic_insert_data_user_referred() {
     $referrer_id      = get_referred_data();
     $refer_links_id   = $wpdb->get_row( "SELECT * FROM {$wpdb->prefix}referral_links" );
 
+    if( is_admin() ) {
+        return;
+    }
     $data = [
         'accepted_user_id'    => $accepted_user_id,
         'referred_by_user_id' => $referrer_id,
@@ -309,7 +339,7 @@ function ic_update_user_status() {
     global $wpdb;
     $id             = get_current_user_id();
     $email_verified = get_user_meta( $id, 'wcemailverified', true );
-    if(!isset($_COOKIE['age-verification'])) {
+    if( isset( $_COOKIE['age-verification'] ) ) {
         $age_verified   = $_COOKIE['age-verification'];
     }
 
@@ -320,7 +350,8 @@ function ic_update_user_status() {
             array(
                 'status'        => 1,
                 'updated_at'    => date( 'Y-m-d H:i:s' ),
-                'total_points' => $old_rewards->total_points + 1000,
+                // 'total_points' => $old_rewards->total_points + 500,
+                'total_points' => $old_rewards + 500,
             ),
             array( 'accepted_user_id' => $id ),
             array( '%s', '%s', '%d' ),
@@ -357,8 +388,21 @@ ic_calculate_points_to_pound();
 
 // session_destroy();
 
+/**
+ * Check is the referred person buy minimum 5 pound excluding taxes, 
+ */
 function check_referrer_purchase_minimum_5_pound() {
-    $user_id = 3;
+    global $wpdb;
+    if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
+        return;
+    }
+
+    $user_id = $wpdb->query(
+        $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}user_referred WHERE referred_by_user_id = %d AND accepted_user_id != 0", get_current_user_id()
+        )
+    );
+
     $customer_orders = wc_get_orders( array(
         'customer_id' => $user_id,
         'status' => array( 'wc-completed', 'wc-processing' )
@@ -369,7 +413,9 @@ function check_referrer_purchase_minimum_5_pound() {
             $total_spent += $item->get_total();
         }
     }
-    $purchase = wc_price($total_spent);
+    return wc_price($total_spent);
 }
-
-add_action('init', 'check_referrer_purchase_minimum_5_pound');
+// TODO: hook 
+// add_action('init', 'check_referrer_purchase_minimum_5_pound');
+// check_referrer_purchase_minimum_5_pound();
+// die("hello");

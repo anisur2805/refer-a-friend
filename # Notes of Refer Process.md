@@ -15,3 +15,5 @@
 13. A Refer table - Admin can 
 14. Show message in my-account page - 1/2
 [Register at field]
+15. update total points after user use 
+16. Referrer will get 5 dollar after 30 days of 

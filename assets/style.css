@@ -1,3 +1,14 @@
+/* Hide login button when user already logged-in */
+.logged-in .hide-on-login {
+    display: none;
+} 
+
+div#popmake-3272.popmake  {
+    bottom: 0;
+    top: unset;
+}
+/* ================== */
+
 .ic-referred-message {
     padding: 10px;
     background: #009462;
@@ -29,6 +40,27 @@
     font-size: 15px;
     font-weight: 600;
     transition: all 0.3s;
+}
+
+#send_email {
+    border: 0;
+    padding: 10px;
+    box-sizing: border-box;
+    height: 48px;
+    font-size: 15px;
+    font-weight: 600;
+    transition: all 0.3s;
+    background: #ddd;
+    display: inline-block;
+    margin: 10px 0;
+    border-radius: 5px;
+    color: #000;
+}
+
+#send_email i {
+    margin-right: 10px;
+    font-size: 22px;
+    line-height: 30px;
 }
 
 #ic_copy-to-clipboard-wrapper .ic_form_group input {
