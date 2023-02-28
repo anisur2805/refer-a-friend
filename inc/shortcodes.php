@@ -19,8 +19,10 @@ function ic_copy_to_clipboard( $atts, $content = ''){
         <div class="ic_form_group">
             <input readonly type="text" id="invite_friend" name="invite_friend" class="form-control" placeholder="" value="'. $site_url.'" />
             <button type="button" id="copy-referral-code" class="ic-button" '.$button_attr.'>Copy link to Clipboard</button>
-        </div>
-        <p class="limit-over">You already referred to '.$total_rewards.' persons this year. You can\'t refer anymore in this year.</p>';
+        </div>';
+        if( ( $total_rewards > 5 ) ) {
+            $output .= '<p class="limit-over">You already referred to '.$total_rewards.' persons this year. You can\'t refer anymore in this year.</p>';
+        }
     $output .= '</form> </div>';
 
     $output .= ob_get_clean();
@@ -70,7 +72,6 @@ function ic_email_share() {
     return $output;
 }
 add_action('wp_ajax_ic_send_email', 'ic_send_email');
-// add_action('wp_ajax_nopriv_ic_send_email', 'ic_send_email');
 
 function ic_send_email() {
     $to             = 'anisur2805@gmail.com';

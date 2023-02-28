@@ -16,12 +16,12 @@ class Subscribers_List_Table extends \WP_List_Table {
     public function get_columns() {
 
         $columns = array(
-            // 'name'       => __( 'Name', 'itc-refer-a-friend' ),
+            'name'       => __( 'Name', 'itc-refer-a-friend' ),
             // 'email'      => __( 'Email', 'itc-refer-a-friend' ),
-            'points'     => __( 'Points', 'itc-refer-a-friend' ),
-            'update'     => __( 'Update Points', 'itc-refer-a-friend' ),
-            'created_at' => __( 'Registration Date', 'itc-refer-a-friend' ),
-            'expired_at' => __( 'Expired Date', 'itc-refer-a-friend' ),
+            // 'points'     => __( 'Points', 'itc-refer-a-friend' ),
+            // 'update'     => __( 'Update Points', 'itc-refer-a-friend' ),
+            // 'created_at' => __( 'Registration Date', 'itc-refer-a-friend' ),
+            // 'expired_at' => __( 'Expired Date', 'itc-refer-a-friend' ),
             'total_points'  => 'total points'
         );
 
@@ -90,7 +90,16 @@ class Subscribers_List_Table extends \WP_List_Table {
             $args["number"], $args["offset"] )
         );
 
-        return $items;
+        // $items[0]->accepted_user_id;
+        // $user_id = $items->accepted_user_id;
+        $items = $wpdb->query(
+            "SELECT display_name FROM {$wpdb->prefix}users where ID =".  $items
+        );
+
+
+        // $items = $items->display_name;
+        // echo gettype($items);
+        // return $items;
 
         // echo '<pre>';
         //       print_r( $this->items );
@@ -115,6 +124,8 @@ class Subscribers_List_Table extends \WP_List_Table {
     }
 
     public function column_name( $item ) {
+        var_dump($item);
+        
         // return $item['name'];
     }
 

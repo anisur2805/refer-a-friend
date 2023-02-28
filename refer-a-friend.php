@@ -158,10 +158,10 @@ function ic_create_referral_link() {
     return idRandEncode( $wpdb->insert_id );
 }
 
-ic_create_referral_link();
+// ic_create_referral_link();
 
 // TODO: this hooks should be user-login/register
-// add_action('user_login', 'ic_create_referral_link');
+add_action('init', 'ic_create_referral_link');
 
 function check_refer_id_url() {
     if ( !isset( $_GET['ref'] ) || empty( $_GET['ref'] ) ) {
@@ -169,13 +169,22 @@ function check_refer_id_url() {
     }
 
     $_SESSION['PHP_REFID'] = $_GET['ref'];
+    if( isset( $_GET['ref'] ) && !empty( $_GET['ref'] ) ) {
+        if( is_user_logged_in() ) {
+            wp_safe_redirect( home_url() . '/my-account' );
+            exit;
+        } else {
+            wp_redirect( home_url() . '/register' );
+            exit;
+        }
+    } 
+    
 }
 
 // TODO: should be use user-register/ login/ admin_init
-// add_action('admin_init', 'check_refer_id_url');
-check_refer_id_url();
+add_action('init', 'check_refer_id_url');
 
-// die( idRandEncode(46));
+// die( idRandEncode(14));
 // 42: vzXDxZEblJkdA
 function ic_user_has_referred() {
     global $wpdb;
@@ -237,19 +246,20 @@ function ic_user_has_referred() {
         'created_at'          => date( 'Y-m-d H:i:s' ),
         'updated_at'          => '',
         'status'              => 0,
-        'total_points'       => 0,
+        'total_points'        => 0,
     ];
     $wpdb->insert( "{$wpdb->prefix}user_referred", $data, ['%d', '%d', '%d', '%s', '%s', '%d', '%d'] );
     return $wpdb->insert_id;
 }
 
-// add_action( 'user_register', 'ic_user_has_referred' );
 add_action( 'init', 'ic_user_has_referred' );
+// add_action( 'init', 'ic_user_has_referred' );
 
 // Insert user referred data
 function ic_insert_data_user_referred() {
     global $wpdb;
-    if( ! is_login() && ! current_user_can('Subscriber') ) {
+    // if( ! is_login() && ! current_user_can('Subscriber') ) {
+    if( ! is_login() ) {
         return;
     }
 
@@ -309,18 +319,24 @@ function show_register_user_message() {
  */
 
 function ic_check_admin() {
-    if ( !is_admin() ) {
-        add_action( 'woocommerce_account_content', 'show_custom_message', 7 );
-    }
+    // if ( !is_admin() ) { // TODO: need to check it out
+        // add_action( 'woocommerce_account_content', 'show_custom_message', 7 );
+    // }
 }
 
-ic_check_admin();
+// ic_check_admin();
+add_action( 'woocommerce_account_content', 'show_custom_message', 7 );
+
 
 function show_custom_message() {
     global $wpdb;
-    if ( !isset( $_SESSION['PHP_REFID'] ) ) {
-        return;
-    }
+
+    // TODO: this need to uncomment for !first time user reg
+    // if ( !isset( $_SESSION['PHP_REFID'] ) ) {
+    //     return;
+    // }
+
+    
     $referred_id = idRandDecode( $_SESSION['PHP_REFID'] );
     $user_name   = $wpdb->get_row(
         $wpdb->prepare(
@@ -347,6 +363,7 @@ function ic_update_user_status() {
     }
 
     if ( $email_verified && $age_verified ) {
+        
         $old_rewards = get_total_points( $id );
         $wpdb->update(
             $wpdb->prefix . 'user_referred',
@@ -361,6 +378,10 @@ function ic_update_user_status() {
             array( '%s', '%s', '%d' ),
             array( '%s' )
         );
+
+        // wp_safe_redirect( home_url() . '/my-account' );
+        // exit;
+
     }
 }
 
@@ -423,3 +444,5 @@ function check_referrer_purchase_minimum_5_pound() {
 // add_action('init', 'check_referrer_purchase_minimum_5_pound');
 // check_referrer_purchase_minimum_5_pound();
 // die("hello");
+
+
