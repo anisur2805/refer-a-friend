@@ -6,7 +6,8 @@ add_shortcode( 'copy_to_clipboard', 'ic_copy_to_clipboard' );
 function ic_copy_to_clipboard( $atts, $content = ''){
 
     $user_id        = get_current_user_id();
-    $site_url       = get_site_url().'/?ref='. idRandEncode( $user_id );
+    // $site_url       = get_site_url().'/?ref='. idRandEncode( $user_id );
+    $site_url       = ic_generate_referral_links();
     $total_rewards  = total_refer_friends();
     $button_attr   = ( $total_rewards > 5 ) ? 'disabled="true"' : '';
     $output = '';

@@ -53,17 +53,19 @@ add_action( 'wp_enqueue_scripts', 'ic_enqueue_styles' );
  * generate Links for referring
  */
 function ic_generate_referral_links() {
-    $user_id = get_current_user_id();
-    $encoded = idRandEncode( $user_id );
+    $referral_link_id = ic_create_referral_link();
+    $encoded = idRandEncode( $referral_link_id );
     $site_url = get_site_url() . '/?ref=' . $encoded;
     return $site_url;
 }
 function idRandEncode( $str ) {
+    // return $str;
     $hashids = new Hashids( HASHHIDE_SALT, 13 );
     return $hashids->encode( $str );
 }
 
 function idRandDecode( $str ) {
+    // return [$str];
     $hashids = new Hashids( HASHHIDE_SALT, 13 );
     return $hashids->decode( $str );
 }
@@ -161,7 +163,8 @@ function ic_create_referral_link() {
 // ic_create_referral_link();
 
 // TODO: this hooks should be user-login/register
-add_action('init', 'ic_create_referral_link');
+// add_action('user_register', 'ic_create_referral_link');
+
 
 function check_refer_id_url() {
     if ( !isset( $_GET['ref'] ) || empty( $_GET['ref'] ) ) {
@@ -203,19 +206,27 @@ function ic_user_has_referred() {
     if ( empty( $decode ) || $decode[0] === 0 ) {
         return;
     }
-    $link = $wpdb->get_row( "SELECT * from {$wpdb->prefix}referral_links WHERE user_id = " . $decode[0] );
+    
+    $link = $wpdb->get_row( "SELECT * from {$wpdb->prefix}referral_links WHERE id = " . $decode[0] );
 
+// echo '<pre>';
+//       print_r( $decode  );
+//       print_r( $link  );
+// echo '</pre>';
+//     die( );
+    
     if ( empty( $link ) ) {
         return;
     }
-
+ 
     if( $link->user_id == NULL ) {
         return;
     }
-    // check date
-    if( $link->expire_date > $link->created_at ) {
-        return;
-    }
+
+    // check date TODO: strtotomestamp - date param time() > expire_date
+    // if( $link->expire_date > $link->created_at ) {
+    //     return;
+    // }
 
     // TODO: gul
     // $user = $wpdb->get_row( "SELECT * from {$wpdb->prefix}user_referred WHERE referred_by_user_id = " . $user_id );
@@ -227,15 +238,14 @@ function ic_user_has_referred() {
     //     echo '</pre>';
     //     die;
     // }
-
     if( is_admin() ) {
         return;
     }
 
     // check referred by user id count == 5
-    $total_referred = $wpdb->get_row( "SELECT count(id) from {$wpdb->prefix}user_referred WHERE status = 1 AND referred_by_user_id = " . $link->user_id );
+    $total_referred = $wpdb->get_row( "SELECT count(id) as total from {$wpdb->prefix}user_referred WHERE status = 1 AND referred_by_user_id = " . $link->user_id );
 
-    if ( $total_referred > 5 ) {
+    if ( intval( $total_referred->total ) > 5 ) {
         return;
     }
 
@@ -244,36 +254,38 @@ function ic_user_has_referred() {
         'referred_by_user_id' => $link->user_id,
         'refer_links_id'      => $link->id,
         'created_at'          => date( 'Y-m-d H:i:s' ),
-        'updated_at'          => '',
+        'updated_at'          => date( 'Y-m-d H:i:s' ),
         'status'              => 0,
         'total_points'        => 0,
     ];
+
+    // echo '<pre>';
+    //       print_r( $data );
+    // echo '</pre>';
+    // die;
+
     $wpdb->insert( "{$wpdb->prefix}user_referred", $data, ['%d', '%d', '%d', '%s', '%s', '%d', '%d'] );
     return $wpdb->insert_id;
 }
-
-add_action( 'init', 'ic_user_has_referred' );
+ic_user_has_referred();
+// add_action( 'user_register', 'ic_user_has_referred' );
 // add_action( 'init', 'ic_user_has_referred' );
 
 // Insert user referred data
 function ic_insert_data_user_referred() {
     global $wpdb;
-    // if( ! is_login() && ! current_user_can('Subscriber') ) {
-    if( ! is_login() ) {
+
+    if( is_login() ) {
         return;
     }
 
-    $user_id          = get_current_user_id();
-    $uuid             = idRandEncode( $user_id );
-    $decode_id        = idRandDecode( $uuid );
-    $accepted_user_id = get_current_user_id();
-    $referrer_id      = get_referred_data();
-    $refer_links_id   = $wpdb->get_row( "SELECT * FROM {$wpdb->prefix}referral_links" );
+    $referrer_link_id       = get_referred_data();
+    $refer_link   = $wpdb->get_row( "SELECT * FROM {$wpdb->prefix}referral_links WHERE id = $referrer_link_id LIMIT 1" );
 
     $data = [
-        'accepted_user_id'    => $accepted_user_id,
-        'referred_by_user_id' => $referrer_id,
-        'refer_links_id'      => $refer_links_id->id,
+        'accepted_user_id'    => get_current_user_id(),
+        'referred_by_user_id' => $refer_link->user_id,
+        'refer_links_id'      => $refer_link->id,
     ];
 
     $inserted = $wpdb->insert( "{$wpdb->prefix}user_referred", $data, ['%d', '%d', '%d'] );
@@ -290,8 +302,8 @@ add_action( 'init', 'ic_insert_data_user_referred' );
 
 // Get Who referred
 function get_referred_data() {
-    if ( isset( $_SESSION['referrer_id'] ) ) {
-        $data     = $_SESSION['referrer_id'];
+    if ( isset( $_SESSION['PHP_REFID'] ) ) {
+        $data     = $_SESSION['PHP_REFID'];
         $refer_id = idRandDecode( $data );
         return $refer_id[0];
     }
@@ -331,11 +343,15 @@ add_action( 'woocommerce_account_content', 'show_custom_message', 7 );
 function show_custom_message() {
     global $wpdb;
 
+    // print_r( $_GET );
+    // die;
     // TODO: this need to uncomment for !first time user reg
-    // if ( !isset( $_SESSION['PHP_REFID'] ) ) {
-    //     return;
-    // }
+    echo do_shortcode('[copy_to_clipboard]');
+    echo do_shortcode('[email_share]');
 
+    if ( !isset( $_SESSION['PHP_REFID'] ) ) {
+        return;
+    }
     
     $referred_id = idRandDecode( $_SESSION['PHP_REFID'] );
     $user_name   = $wpdb->get_row(
@@ -343,9 +359,7 @@ function show_custom_message() {
             "SELECT * FROM {$wpdb->prefix}users WHERE ID = %d", $referred_id
         )
     );
-
-    echo do_shortcode('[copy_to_clipboard]');
-    echo do_shortcode('[email_share]');
+    
     $class        = 'ic-referred-message';
     $id           = 'ic-referred-message';
     $message      = "You just been referred by <strong>{$user_name->display_name}</strong>. You both receive £5. Once you register, you can do the same and get another £5 for every person you refer.";
@@ -358,6 +372,8 @@ function ic_update_user_status() {
     global $wpdb;
     $id             = get_current_user_id();
     $email_verified = get_user_meta( $id, 'wcemailverified', true );
+
+    // get age verify from url param
     if( isset( $_COOKIE['age-verification'] ) ) {
         $age_verified   = $_COOKIE['age-verification'];
     }
@@ -445,4 +461,34 @@ function check_referrer_purchase_minimum_5_pound() {
 // check_referrer_purchase_minimum_5_pound();
 // die("hello");
 
+$arr = [
+    'raf_av'  => 1,
+    'raf_rlid'        => 999
 
+];
+$token = md5( base64_encode( json_encode( $arr ) ) );
+$query = http_build_query( $arr, '', '&');
+$query .= '&token='.$token;
+
+///
+$retrive = '';
+parse_str($query, $retrive);
+$rToken = $retrive['token'];
+unset( $retrive['token']);
+
+$testToken = md5( base64_encode( json_encode( $arr ) ) );
+
+if( $testToken === $rtoken){
+    echo 'Match';
+} else {
+    echo 'Not match';
+}
+
+// echo '<pre>';
+//       var_dump($token);
+//       var_dump($query);
+//       var_dump($retrive);
+//       var_dump($testToken);
+// echo '</pre>';
+
+// TODO: new column while 
