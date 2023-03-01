@@ -1,4 +1,37 @@
 <?php
+
+/**
+ * Check is the referred person buy minimum 5 pound excluding taxes, 
+ */
+function check_referrer_purchase_minimum_5_pound() {
+    global $wpdb;
+    if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
+        return;
+    }
+
+    $user_id = $wpdb->query(
+        $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}user_referred WHERE referred_by_user_id = %d AND accepted_user_id != 0", get_current_user_id()
+        )
+    );
+
+    $customer_orders = wc_get_orders( array(
+        'customer_id' => $user_id,
+        'status' => array( 'wc-completed', 'wc-processing' )
+    ) );
+    $total_spent = 0;
+    foreach ( $customer_orders as $order ) {
+        foreach ( $order->get_items() as $item ) {
+            $total_spent += $item->get_total();
+        }
+    }
+    return wc_price($total_spent);
+}
+// TODO: hook 
+// add_action('init', 'check_referrer_purchase_minimum_5_pound');
+// check_referrer_purchase_minimum_5_pound();
+// die("hello");
+
 add_action('woocommerce_review_order_before_shipping', 'itc_add_ship_info', 4);
 function itc_add_ship_info() {
     global $wpdb;
@@ -62,4 +95,42 @@ function itc_discount_rewards_cost($cart) {
     }
 
     $cart->add_fee(__('Rewards Discount'), -$discount);
+}
+
+
+/**
+ * Display custom message for newly registered user first time
+ */
+add_action( 'woocommerce_account_content', 'show_custom_message', 7 );
+function show_custom_message() {
+    global $wpdb;
+
+    echo do_shortcode('[copy_to_clipboard]');
+    echo do_shortcode('[email_share]');
+
+    $referred_msg_show_once = get_user_meta( get_current_user_id(), 'referred_msg_show_once', true );
+    if( empty($referred_msg_show_once) && "0" !== $referred_msg_show_once){
+        add_user_meta( get_current_user_id(), 'referred_msg_show_once', 1 );
+    }
+
+    if( $referred_msg_show_once ) {
+        return;
+    }
+    
+    if ( !isset( $_SESSION['PHP_REFID'] ) ) {
+        return;
+    }
+    
+    $referred_id = idRandDecode( $_SESSION['PHP_REFID'] );
+    $user_name   = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}users WHERE ID = %d", $referred_id
+        )
+    );
+    
+    $class        = 'ic-referred-message';
+    $id           = 'ic-referred-message';
+    $message      = "You just been referred by <strong>{$user_name->display_name}</strong>. You both receive £5. Once you register, you can do the same and get another £5 for every person you refer.";
+    $allowed_html = array( 'strong' => array() );
+    printf( '<div class="%1$s" id="%2$s"><p>%3$s</p></div>', esc_attr( $class ), esc_attr( $id ), wp_kses( $message, $allowed_html ) );
 }

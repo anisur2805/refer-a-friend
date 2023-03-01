@@ -22,7 +22,7 @@ function ic_copy_to_clipboard( $atts, $content = ''){
             <button type="button" id="copy-referral-code" class="ic-button" '.$button_attr.'>Copy link to Clipboard</button>
         </div>';
         if( ( $total_rewards > 5 ) ) {
-            $output .= '<p class="limit-over">You already referred to '.$total_rewards.' persons this year. You can\'t refer anymore in this year.</p>';
+            $output .= '<p class="limit-over">You already referred to 5 persons this year. You can\'t refer anymore in this year.</p>';
         }
     $output .= '</form> </div>';
 

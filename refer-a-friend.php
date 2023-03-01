@@ -55,7 +55,8 @@ add_action( 'wp_enqueue_scripts', 'ic_enqueue_styles' );
 function ic_generate_referral_links() {
     $referral_link_id = ic_create_referral_link();
     $encoded = idRandEncode( $referral_link_id );
-    $site_url = get_site_url() . '/?ref=' . $encoded;
+    // $site_url = get_site_url() . '/?ref=' . $encoded; // TODO: this line create issue
+    $site_url = get_site_url() . '/?ref=' . $referral_link_id;
     return $site_url;
 }
 function idRandEncode( $str ) {
@@ -141,20 +142,29 @@ function ic_create_referral_link() {
     global $wpdb;
     $id             = get_current_user_id();
     $email_verified = get_user_meta( $id, 'wcemailverified', true );
-    if(isset($_COOKIE['age-verification'])) {
-        $age_verified   = $_COOKIE['age-verification'];
+    $age_verified   = isset($_COOKIE['age-verification']) ? $_COOKIE['age-verification'] : false;
+
+    // if ( ! $email_verified || ! $age_verified ) { 
+    //     return;
+    // }
+
+    // select * from referral_links where usrid = id order by desc limit 1 and 
+    $today = date('Y-m-d')." 23:59:59";
+    $query = "SELECT * FROM {$wpdb->prefix}referral_links WHERE user_id = $id AND expire_date > '$today' ORDER BY id DESC LIMIT 1";
+    $get_row = $wpdb->get_row( $query );
+
+    if( ! empty( $get_row) ) {
+        return idRandEncode( $get_row->id );
     }
 
-    if ( $email_verified && $age_verified ) {
-        $data = [
-            'created_at'  => date( 'Y-m-d H:i:s' ),
-            'expire_date' => date( 'Y-m-d H:i:s', strtotime( ' +30 days' ) ),
-            'user_id'     => $id,
-        ];
-        $inserted = $wpdb->insert( "{$wpdb->prefix}referral_links", $data, ['%s', '%s', '%d'] );
-        if ( !$inserted ) {
-            return new \WP_Error( 'failed-to-insert', __( 'Failed to insert' ) );
-        }
+    $data = [
+        'created_at'  => date( 'Y-m-d H:i:s' ),
+        'expire_date' => date( 'Y-m-d H:i:s', strtotime( ' +30 days' ) ),
+        'user_id'     => $id,
+    ];
+    $inserted = $wpdb->insert( "{$wpdb->prefix}referral_links", $data, ['%s', '%s', '%d'] );
+    if ( !$inserted ) {
+        return new \WP_Error( 'failed-to-insert', __( 'Failed to insert' ) );
     }
 
     return idRandEncode( $wpdb->insert_id );
@@ -163,7 +173,7 @@ function ic_create_referral_link() {
 // ic_create_referral_link();
 
 // TODO: this hooks should be user-login/register
-// add_action('user_register', 'ic_create_referral_link');
+// add_action('init', 'ic_create_referral_link');
 
 
 function check_refer_id_url() {
@@ -187,33 +197,30 @@ function check_refer_id_url() {
 // TODO: should be use user-register/ login/ admin_init
 add_action('init', 'check_refer_id_url');
 
-// die( idRandEncode(14));
-// 42: vzXDxZEblJkdA
 function ic_user_has_referred() {
     global $wpdb;
-
+    
+    if( empty( $_COOKIE['age-verification'])){
+        return;
+    }
+    
     $user_id = get_current_user_id();
+    
     if ( $user_id == 0 ) {
         return;
     }
-
+    
+    
     if ( !isset( $_SESSION['PHP_REFID'] ) ) {
         return;
     }
-
-    $decode = idRandDecode( $_SESSION['PHP_REFID'] );
     
+    $decode = idRandDecode( $_SESSION['PHP_REFID'] );
     if ( empty( $decode ) || $decode[0] === 0 ) {
         return;
     }
     
     $link = $wpdb->get_row( "SELECT * from {$wpdb->prefix}referral_links WHERE id = " . $decode[0] );
-
-// echo '<pre>';
-//       print_r( $decode  );
-//       print_r( $link  );
-// echo '</pre>';
-//     die( );
     
     if ( empty( $link ) ) {
         return;
@@ -241,14 +248,20 @@ function ic_user_has_referred() {
     if( is_admin() ) {
         return;
     }
-
     // check referred by user id count == 5
     $total_referred = $wpdb->get_row( "SELECT count(id) as total from {$wpdb->prefix}user_referred WHERE status = 1 AND referred_by_user_id = " . $link->user_id );
 
-    if ( intval( $total_referred->total ) > 5 ) {
-        return;
-    }
+    // if ( intval( $total_referred->total ) > 5 ) {
+    //     return;
+    // }
 
+    $raf_av = get_user_meta($user_id, 'raf_av', true);
+    if( empty($raf_av) && "0" !== $raf_av ){
+        add_user_meta( $user_id, 'raf_av', $_COOKIE['age-verification']==="true", true);
+    } else {
+        update_user_meta($user_id, 'raf_av', $_COOKIE['age-verification']==="true");
+    }
+    
     $data = [
         'accepted_user_id'    => $user_id,
         'referred_by_user_id' => $link->user_id,
@@ -258,11 +271,6 @@ function ic_user_has_referred() {
         'status'              => 0,
         'total_points'        => 0,
     ];
-
-    // echo '<pre>';
-    //       print_r( $data );
-    // echo '</pre>';
-    // die;
 
     $wpdb->insert( "{$wpdb->prefix}user_referred", $data, ['%d', '%d', '%d', '%s', '%s', '%d', '%d'] );
     return $wpdb->insert_id;
@@ -287,17 +295,12 @@ function ic_insert_data_user_referred() {
         return;
     }
 
-    die('hey');
 
     $data = [
         'accepted_user_id'    => get_current_user_id(),
         'referred_by_user_id' => $refer_link->user_id,
         'refer_links_id'      => $refer_link->id,
     ];
-
-    echo '<pre>';
-          print_r( $data );
-    echo '</pre>'; 
 
     $inserted = $wpdb->insert( "{$wpdb->prefix}user_referred", $data, ['%d', '%d', '%d'] );
 
@@ -324,69 +327,18 @@ function get_referred_data() {
 add_action( 'init', 'get_referred_data' );
 
 /**
- * Check currently on 'my-account' page and
- * show the subscriber a message
- */
-function show_register_user_message() {
-    global $wp;
-    $request = explode( '/', $wp->request );
-    if ( end( $request ) == 'my-account' && is_account_page() ) {
-    }
-}
-
-// add_action( 'init', 'show_register_user_message' );
-// link: 26pDbLAX7wJdg, oEeQ27NB7K0jB
-
-/**
- * Show resister user welcome message
- */
-
-function ic_check_admin() {
-    // if ( !is_admin() ) { // TODO: need to check it out
-        // add_action( 'woocommerce_account_content', 'show_custom_message', 7 );
-    // }
-}
-
-// ic_check_admin();
-add_action( 'woocommerce_account_content', 'show_custom_message', 7 );
-
-
-function show_custom_message() {
-    global $wpdb;
-
-    // print_r( $_GET );
-    // die;
-    // TODO: this need to uncomment for !first time user reg
-    echo do_shortcode('[copy_to_clipboard]');
-    echo do_shortcode('[email_share]');
-
-    if ( !isset( $_SESSION['PHP_REFID'] ) ) {
-        return;
-    }
-    
-    $referred_id = idRandDecode( $_SESSION['PHP_REFID'] );
-    $user_name   = $wpdb->get_row(
-        $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}users WHERE ID = %d", $referred_id
-        )
-    );
-    
-    $class        = 'ic-referred-message';
-    $id           = 'ic-referred-message';
-    $message      = "You just been referred by <strong>{$user_name->display_name}</strong>. You both receive £5. Once you register, you can do the same and get another £5 for every person you refer.";
-    $allowed_html = array( 'strong' => array() );
-    printf( '<div class="%1$s" id="%2$s"><p>%3$s</p></div>', esc_attr( $class ), esc_attr( $id ), wp_kses( $message, $allowed_html ) );
-}
-
-// Set status and updated_at column when user verify age and email
+ * Set status and updated_at column when 
+ * user verify age and email
+ * */
 function ic_update_user_status() {
     global $wpdb;
     $id             = get_current_user_id();
     $email_verified = get_user_meta( $id, 'wcemailverified', true );
 
     // get age verify from url param
-    if( isset( $_COOKIE['age-verification'] ) ) {
-        $age_verified   = $_COOKIE['age-verification'];
+    $age_verified = false;
+    if( ! empty( $_COOKIE['age-verification'] ) ) {
+        $age_verified   = $_COOKIE['age-verification']==="true";
     }
 
     if ( $email_verified && $age_verified ) {
@@ -397,18 +349,12 @@ function ic_update_user_status() {
             array(
                 'status'        => 1,
                 'updated_at'    => date( 'Y-m-d H:i:s' ),
-                // 'total_points' => $old_rewards->total_points + 500,
                 'total_points' => $old_rewards + 500,
-                // 'total_points' => 'total_points' + 500,
             ),
             array( 'accepted_user_id' => $id ),
             array( '%s', '%s', '%d' ),
             array( '%s' )
         );
-
-        // wp_safe_redirect( home_url() . '/my-account' );
-        // exit;
-
     }
 }
 
@@ -440,37 +386,7 @@ ic_calculate_points_to_pound();
 
 // session_destroy();
 
-/**
- * Check is the referred person buy minimum 5 pound excluding taxes, 
- */
-function check_referrer_purchase_minimum_5_pound() {
-    global $wpdb;
-    if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
-        return;
-    }
 
-    $user_id = $wpdb->query(
-        $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}user_referred WHERE referred_by_user_id = %d AND accepted_user_id != 0", get_current_user_id()
-        )
-    );
-
-    $customer_orders = wc_get_orders( array(
-        'customer_id' => $user_id,
-        'status' => array( 'wc-completed', 'wc-processing' )
-    ) );
-    $total_spent = 0;
-    foreach ( $customer_orders as $order ) {
-        foreach ( $order->get_items() as $item ) {
-            $total_spent += $item->get_total();
-        }
-    }
-    return wc_price($total_spent);
-}
-// TODO: hook 
-// add_action('init', 'check_referrer_purchase_minimum_5_pound');
-// check_referrer_purchase_minimum_5_pound();
-// die("hello");
 
 // $arr = [
 //     'raf_av'  => 1,
