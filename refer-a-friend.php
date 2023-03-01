@@ -124,8 +124,8 @@ function create_referral_links_table() {
     $schema = "CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}user_referred`(
         id int(11) unsigned NOT NULL AUTO_INCREMENT,
         accepted_user_id int unsigned NOT NULL,
-        referred_by_user_id int unsigned NOT NULL,
-        refer_links_id int(11) NOT NULL,
+        referred_by_user_id int unsigned DEFAULT 0,
+        refer_links_id int(11) DEFAULT 0,
         created_at timestamp NOT NULL,
         updated_at timestamp NOT NULL,
         status tinyint NOT NULL DEFAULT 0,
@@ -279,14 +279,25 @@ function ic_insert_data_user_referred() {
         return;
     }
 
+    
     $referrer_link_id       = get_referred_data();
-    $refer_link   = $wpdb->get_row( "SELECT * FROM {$wpdb->prefix}referral_links WHERE id = $referrer_link_id LIMIT 1" );
+    $refer_link   = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}referral_links WHERE id = %d LIMIT 1", $referrer_link_id ) );
+    
+    if( is_null( $refer_link ) ) {  
+        return;
+    }
+
+    die('hey');
 
     $data = [
         'accepted_user_id'    => get_current_user_id(),
         'referred_by_user_id' => $refer_link->user_id,
         'refer_links_id'      => $refer_link->id,
     ];
+
+    echo '<pre>';
+          print_r( $data );
+    echo '</pre>'; 
 
     $inserted = $wpdb->insert( "{$wpdb->prefix}user_referred", $data, ['%d', '%d', '%d'] );
 
@@ -461,28 +472,28 @@ function check_referrer_purchase_minimum_5_pound() {
 // check_referrer_purchase_minimum_5_pound();
 // die("hello");
 
-$arr = [
-    'raf_av'  => 1,
-    'raf_rlid'        => 999
+// $arr = [
+//     'raf_av'  => 1,
+//     'raf_rlid'        => 999
 
-];
-$token = md5( base64_encode( json_encode( $arr ) ) );
-$query = http_build_query( $arr, '', '&');
-$query .= '&token='.$token;
+// ];
+// $token = md5( base64_encode( json_encode( $arr ) ) );
+// $query = http_build_query( $arr, '', '&');
+// $query .= '&token='.$token;
 
 ///
-$retrive = '';
-parse_str($query, $retrive);
-$rToken = $retrive['token'];
-unset( $retrive['token']);
+// $retrive = '';
+// parse_str($query, $retrive);
+// $rToken = $retrive['token'];
+// unset( $retrive['token']);
 
-$testToken = md5( base64_encode( json_encode( $arr ) ) );
+// $testToken = md5( base64_encode( json_encode( $arr ) ) );
 
-if( $testToken === $rtoken){
-    echo 'Match';
-} else {
-    echo 'Not match';
-}
+// if( $testToken === $rtoken){
+//     echo 'Match';
+// } else {
+//     echo 'Not match';
+// }
 
 // echo '<pre>';
 //       var_dump($token);
