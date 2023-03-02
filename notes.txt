@@ -1,13 +1,35 @@
-    $user = wp_get_current_user();
-    if ( $user && $user->exists() ) {
-        if ( is_user_logged_in() ) {
-            wp_safe_redirect( home_url( '/wp-admin/options-general.php?page=referral-options' ) );
-            exit();
-        } else {
-            wp_redirect( wp_login_url() );
-            exit();
-        }
-    } else {
-        wp_redirect( wp_registration_url() );
-        exit();
-    }
+<?php
+
+
+
+$arr = [
+    'raf_av'  => 1,
+    'raf_rlid'        => 999
+
+];
+$token = md5( base64_encode( json_encode( $arr ) ) );
+$query = http_build_query( $arr, '', '&');
+$query .= '&token='.$token;
+
+///
+// $retrive = '';
+// parse_str($query, $retrive);
+// $rToken = $retrive['token'];
+// unset( $retrive['token']);
+
+// $testToken = md5( base64_encode( json_encode( $arr ) ) );
+
+// if( $testToken === $rtoken){
+//     echo 'Match';
+// } else {
+//     echo 'Not match';
+// }
+
+// echo '<pre>';
+//       var_dump($token);
+//       var_dump($query);
+//       var_dump($retrive);
+//       var_dump($testToken);
+// echo '</pre>';
+
+// TODO: new column while 

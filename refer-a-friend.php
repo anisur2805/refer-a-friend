@@ -130,7 +130,8 @@ function create_referral_links_table() {
         created_at timestamp NOT NULL,
         updated_at timestamp NOT NULL,
         status tinyint NOT NULL DEFAULT 0,
-        total_points int(11) NOT NULL DEFAULT 0,
+        accept_total_points int(11) NOT NULL DEFAULT 0,
+        referrer_total_points int(11) NOT NULL DEFAULT 0,
         PRIMARY KEY (`id`)
     ) $charset_collate";
 
@@ -249,11 +250,11 @@ function ic_user_has_referred() {
         return;
     }
     // check referred by user id count == 5
-    $total_referred = $wpdb->get_row( "SELECT count(id) as total from {$wpdb->prefix}user_referred WHERE status = 1 AND referred_by_user_id = " . $link->user_id );
+    $total_referred = $wpdb->get_row( $wpdb->prepare( "SELECT count(id) as total from {$wpdb->prefix}user_referred WHERE status = 1 AND referred_by_user_id = %d", $link->user_id ));
 
-    // if ( intval( $total_referred->total ) > 5 ) {
-    //     return;
-    // }
+    if ( intval( $total_referred->total ) > 5 ) {
+        return;
+    }
 
     $raf_av = get_user_meta($user_id, 'raf_av', true);
     if( empty($raf_av) && "0" !== $raf_av ){
@@ -269,15 +270,40 @@ function ic_user_has_referred() {
         'created_at'          => date( 'Y-m-d H:i:s' ),
         'updated_at'          => date( 'Y-m-d H:i:s' ),
         'status'              => 0,
-        'total_points'        => 0,
+        'accept_total_points'        => 500,
+        'referrer_total_points'        => 0,
     ];
 
-    $wpdb->insert( "{$wpdb->prefix}user_referred", $data, ['%d', '%d', '%d', '%s', '%s', '%d', '%d'] );
+    $wpdb->insert( "{$wpdb->prefix}user_referred", $data, ['%d', '%d', '%d', '%s', '%s', '%d', '%d', '%d' ] );
+    // $wpdb->query(
+    //     $wpdb->prepare(
+    //         "INSERT INTO {$wpdb->prefix}user_referred 
+    //         ( accepted_user_id, referred_by_user_id, refer_links_id, created_at, updated_at, status, accept_total_points, referrer_total_points) VALUES 
+    //         ('%d', '%d', '%d', '%s', '%s', '%d', '%d')", 
+    //         $user_id, $link->user_id, $link->id, date( 'Y-m-d H:i:s' ), date( 'Y-m-d H:i:s' ), 0, 0, 0 ));
     return $wpdb->insert_id;
 }
 ic_user_has_referred();
 // add_action( 'user_register', 'ic_user_has_referred' );
 // add_action( 'init', 'ic_user_has_referred' );
+
+/**
+ * Check is verified
+ */
+function check_verification(){
+    $id             = get_current_user_id();
+    $email_verified = get_user_meta( $id, 'wcemailverified', true );
+    // get age verify from url param
+    $age_verified = false;
+    if( ! empty( $_COOKIE['age-verification'] ) ) {
+        $age_verified   = $_COOKIE['age-verification']==="true";
+    }
+    if ( $email_verified && $age_verified ) {
+        ic_insert_data_user_referred();
+    }
+}
+
+check_verification();
 
 // Insert user referred data
 function ic_insert_data_user_referred() {
@@ -286,8 +312,15 @@ function ic_insert_data_user_referred() {
     if( is_login() ) {
         return;
     }
+    $id             = get_current_user_id();
+    // $email_verified = get_user_meta( $id, 'wcemailverified', true );
 
-    
+    // get age verify from url param
+    // $age_verified = false;
+    // if( ! empty( $_COOKIE['age-verification'] ) ) {
+    //     $age_verified   = $_COOKIE['age-verification']==="true";
+    // }
+
     $referrer_link_id       = get_referred_data();
     $refer_link   = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}referral_links WHERE id = %d LIMIT 1", $referrer_link_id ) );
     
@@ -295,24 +328,57 @@ function ic_insert_data_user_referred() {
         return;
     }
 
-
     $data = [
         'accepted_user_id'    => get_current_user_id(),
         'referred_by_user_id' => $refer_link->user_id,
         'refer_links_id'      => $refer_link->id,
     ];
 
-    $inserted = $wpdb->insert( "{$wpdb->prefix}user_referred", $data, ['%d', '%d', '%d'] );
+    // if ( $email_verified && $age_verified ) {
+        
+        $old_rewards = get_total_points( $id );
+        $wpdb->update(
+            $wpdb->prefix . 'user_referred',
+            array(
+                'status'              => 1,
+                'updated_at'          => date( 'Y-m-d H:i:s' ),
+                'accept_total_points'        => $old_rewards->accept_total_points + 500,
+                'accepted_user_id'    => get_current_user_id(),
+                'referred_by_user_id' => $refer_link->user_id,
+                'refer_links_id'      => $refer_link->id,
+            ),
+            array( 'accepted_user_id' => $id ),
+            // array( '%s', '%s', '%d', '%d', '%d', '%d' ),
+            // array( '%s' )
+        );
 
-    if ( !$inserted ) {
-        return new \WP_Error( 'failed-to-insert', __( 'Failed to insert' ) );
-    }
+    // } else {
+    //     $wpdb->update(
+    //         $wpdb->prefix."user_referred",
+    //         [
+    //             'referred_by_user_id' => $refer_link->user_id,
+    //             'refer_links_id'      => $refer_link->id,
+    //         ],
+    //         array( 'accepted_user_id' => get_current_user_id() ),
+    //         array(
+    //             '%d',
+    //             '%d'
+    //         ),
+    //         array( '%d' )
+    //     );
+    // }
+
+    // $inserted = $wpdb->insert( "{$wpdb->prefix}user_referred", $data, ['%d', '%d', '%d'] );
+
+    // if ( !$inserted ) {
+    //     return new \WP_Error( 'failed-to-insert', __( 'Failed to insert' ) );
+    // }
 
     return $wpdb->insert_id;
 }
 
 // TODO: this hooks should be user-login/register
-add_action( 'init', 'ic_insert_data_user_referred' );
+// add_action( 'init', 'ic_insert_data_user_referred' );
 
 // Get Who referred
 function get_referred_data() {
@@ -349,7 +415,7 @@ function ic_update_user_status() {
             array(
                 'status'        => 1,
                 'updated_at'    => date( 'Y-m-d H:i:s' ),
-                'total_points' => $old_rewards + 500,
+                'accept_total_points' => $old_rewards->accept_total_points + 500,
             ),
             array( 'accepted_user_id' => $id ),
             array( '%s', '%s', '%d' ),
@@ -358,13 +424,13 @@ function ic_update_user_status() {
     }
 }
 
-ic_update_user_status();
+// ic_update_user_status(); // TODO: this run continueusly
 
 function get_total_points( $user_id ) {
     global $wpdb;
     return $wpdb->get_row(
         $wpdb->prepare(
-            "SELECT total_points FROM {$wpdb->prefix}user_referred WHERE accepted_user_id = %d", $user_id
+            "SELECT accept_total_points FROM {$wpdb->prefix}user_referred WHERE accepted_user_id = %d", $user_id
         )
     );
 }
@@ -374,48 +440,31 @@ function ic_calculate_points_to_pound() {
     if( $id ) {
         $points = get_total_points( $id );
         if( $points ) {
-            $points = $points->total_points;
+            $points = $points->accept_total_points;
             $pound  = round( $points / 100 );
             return $pound;
         }
     }
 }
-ic_calculate_points_to_pound();
+// ic_calculate_points_to_pound();
 
 
 
 // session_destroy();
 
+/**
+ * Update referrer user after 30days gone
+ */
+function update_referrer_points_by_30days() {
+    global $wpdb;
 
+    $table_name = $wpdb->prefix . 'user_referred';
+    $referrer_total_points = 500;
+    $referred_by_user_id = 57;
 
-// $arr = [
-//     'raf_av'  => 1,
-//     'raf_rlid'        => 999
+    $query = "UPDATE $table_name SET referrer_total_points = referrer_total_points + %d WHERE referred_by_user_id = %d AND updated_at < DATE_SUB(NOW(), INTERVAL 30 DAY)";
+    $wpdb->query($wpdb->prepare($query, $referrer_total_points, $referred_by_user_id));
+    echo $wpdb->last_query;
+}
 
-// ];
-// $token = md5( base64_encode( json_encode( $arr ) ) );
-// $query = http_build_query( $arr, '', '&');
-// $query .= '&token='.$token;
-
-///
-// $retrive = '';
-// parse_str($query, $retrive);
-// $rToken = $retrive['token'];
-// unset( $retrive['token']);
-
-// $testToken = md5( base64_encode( json_encode( $arr ) ) );
-
-// if( $testToken === $rtoken){
-//     echo 'Match';
-// } else {
-//     echo 'Not match';
-// }
-
-// echo '<pre>';
-//       var_dump($token);
-//       var_dump($query);
-//       var_dump($retrive);
-//       var_dump($testToken);
-// echo '</pre>';
-
-// TODO: new column while 
+// update_referrer_points_by_30days();

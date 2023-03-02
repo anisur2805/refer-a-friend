@@ -22,7 +22,7 @@ class Subscribers_List_Table extends \WP_List_Table {
             // 'update'     => __( 'Update Points', 'itc-refer-a-friend' ),
             // 'created_at' => __( 'Registration Date', 'itc-refer-a-friend' ),
             // 'expired_at' => __( 'Expired Date', 'itc-refer-a-friend' ),
-            'total_points'  => 'total points'
+            'accept_total_points'  => 'total points'
         );
 
         return $columns;

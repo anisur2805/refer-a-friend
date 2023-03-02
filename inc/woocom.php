@@ -41,14 +41,14 @@ function itc_add_ship_info() {
     $_cart_total = $cart_total;
     $points     = $wpdb->get_row(
         $wpdb->prepare(
-            "SELECT SUM(total_points) AS total_points FROM {$wpdb->prefix}user_referred WHERE referred_by_user_id = %d",
+            "SELECT SUM(accept_total_points) AS total_points FROM {$wpdb->prefix}user_referred WHERE referred_by_user_id = %d",
             get_current_user_id()
         )
     );
 
     // $points  = 500;
     $message = '';
-    $points  = $points->total_points; // TODO: need to update
+    $points  = $points->accept_total_points; // TODO: need to update
 
     if ($_cart_total >= 5) {
         if ($points >= 0) {
