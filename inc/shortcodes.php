@@ -6,10 +6,9 @@ add_shortcode( 'copy_to_clipboard', 'ic_copy_to_clipboard' );
 function ic_copy_to_clipboard( $atts, $content = ''){
 
     $user_id        = get_current_user_id();
-    // $site_url       = get_site_url().'/?ref='. idRandEncode( $user_id );
     $site_url       = ic_generate_referral_links();
     $total_rewards  = total_refer_friends();
-    $button_attr   = ( $total_rewards > 5 ) ? 'disabled="true"' : '';
+    $button_attr    = ( $total_rewards > 5 ) ? 'disabled="true"' : '';
     $output = '';
 
     ob_start();
@@ -72,8 +71,11 @@ function ic_email_share() {
     $output .= '<a href="" id="send_email"><i class="icon-default-style fa fa-envelope-o extra-color-2"></i> Email</a>';
     return $output;
 }
-add_action('wp_ajax_ic_send_email', 'ic_send_email');
 
+/**
+ * Send email with ajax
+ */
+add_action('wp_ajax_ic_send_email', 'ic_send_email');
 function ic_send_email() {
     $to             = 'anisur2805@gmail.com';
     $subject        = 'Test Email';

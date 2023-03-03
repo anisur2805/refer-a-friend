@@ -5,19 +5,23 @@ if ( !class_exists( 'WP_List_Table' ) ) {
 }
 
 class Subscribers_List_Table extends \WP_List_Table {
-    public function __construct() {
+    private $_items;
+    public function __construct( $data ) {
         parent::__construct( [
             'singular' => 'subscriber',
             'plural'   => 'subscribers',
             'ajax'     => false,
         ] );
+        $this->_items = $data;
     }
 
     public function get_columns() {
 
         $columns = array(
-            'name'       => __( 'Name', 'itc-refer-a-friend' ),
-            // 'email'      => __( 'Email', 'itc-refer-a-friend' ),
+            'cb'       => __( '<input type="checkbox" />', 'itc-refer-a-friend' ),
+            'created_at'      => __( 'Created At', 'itc-refer-a-friend' ),
+            'expire_date'      => __( 'Expired At', 'itc-refer-a-friend' ),
+            'user_id'      => __( 'User ID', 'itc-refer-a-friend' ),
             // 'points'     => __( 'Points', 'itc-refer-a-friend' ),
             // 'update'     => __( 'Update Points', 'itc-refer-a-friend' ),
             // 'created_at' => __( 'Registration Date', 'itc-refer-a-friend' ),
@@ -34,30 +38,42 @@ class Subscribers_List_Table extends \WP_List_Table {
      */
     public function prepare_items() {
 
-        $column   = $this->get_columns();
-        $hidden   = [];
-        $sortable = $this->get_sortable_columns();
-        $per_page = 20;
-
-        $this->_column_headers = [$column, $hidden, $sortable];
-
+        $per_page = 2;
+        $total_items = count( $this->_items );
         $current_page = $this->get_pagenum();
-        $offset       = ( $current_page - 1 ) * $per_page;
-
-        $args = [
-            'number' => $per_page,
-            'offset' => $offset,
-        ];
-
-        $this->items = $this->itc_get_subscribers( $args );
-        echo '<pre>';
-              print_r( $this->itc_get_subscribers( $args ) );
-        echo '</pre>';
-        
-        $this->set_pagination_args( [
-            'total_items' => $this->itc_subscribers_count(),
+        $this->set_pagination_args([
+            'total_items' => $total_items,
             'per_page'    => $per_page,
-        ] );
+        ]);
+
+        $data = array_slice( $this->_items, ($current_page - 1) * $per_page, $per_page );
+        $this->items = $data;
+        $this->_column_headers = [ $this->get_columns(), [], [] ];
+
+        // $column   = $this->get_columns();
+        // $hidden   = [];
+        // $sortable = $this->get_sortable_columns();
+        // $per_page = 20;
+
+        // $this->_column_headers = [$column, $hidden, $sortable];
+
+        // $current_page = $this->get_pagenum();
+        // $offset       = ( $current_page - 1 ) * $per_page;
+
+        // $args = [
+        //     'number' => $per_page,
+        //     'offset' => $offset,
+        // ];
+
+        // $this->items = $this->itc_get_subscribers( $args );
+        // echo '<pre>';
+        //       print_r( $this->itc_get_subscribers( $args ) );
+        // echo '</pre>';
+        
+        // $this->set_pagination_args( [
+        //     'total_items' => $this->itc_subscribers_count(),
+        //     'per_page'    => $per_page,
+        // ] );
 
     }
 
@@ -116,8 +132,12 @@ class Subscribers_List_Table extends \WP_List_Table {
     }
 
     public function column_cb( $item ) {
-        // return "<input type='checkbox' name='bulk-delete[]' value='{$item["id"]}'/>";
+        return "<input type='checkbox' value='{$item["id"]}'/>";
     } 
+    
+    // public function created_at( $item ) {
+        // return "<input type='checkbox' name='bulk-delete[]' value='{$item["id"]}'/>";
+    // }
     
     public function column_total_points( $item ) {
         // return "<input type='checkbox' name='bulk-delete[]' value='{$item["id"]}'/>";
@@ -146,9 +166,9 @@ class Subscribers_List_Table extends \WP_List_Table {
         // );
     }
 
-    public function column_created_at( $item ) {
+    // public function column_created_at( $item ) {
         // return $item['created_at'];
-    }
+    // }
 
     public function column_updated_at( $item ) {
         // return $item['updated_at'];
@@ -163,6 +183,7 @@ class Subscribers_List_Table extends \WP_List_Table {
     }
 
     public function column_default( $item, $column_name ) {
+        return $item[$column_name];
         // switch ( $column_name ) {
         // case 'value':
         //     break;
@@ -171,6 +192,6 @@ class Subscribers_List_Table extends \WP_List_Table {
         //     return isset( $item[$column_name] ) ? $item[$column_name] : '';
         // }
 
-        return $item->$column_name;
+        // return $item->$column_name;
     }
 }

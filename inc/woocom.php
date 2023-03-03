@@ -113,20 +113,28 @@ function show_custom_message() {
         add_user_meta( get_current_user_id(), 'referred_msg_show_once', 1 );
     }
 
-    if( $referred_msg_show_once ) {
+    if( $referred_msg_show_once == "1" ) {
         return;
     }
     
     if ( !isset( $_SESSION['PHP_REFID'] ) ) {
         return;
     }
-    
+
     $referred_id = idRandDecode( $_SESSION['PHP_REFID'] );
     $user_name   = $wpdb->get_row(
         $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}users WHERE ID = %d", $referred_id
+            "SELECT * FROM {$wpdb->prefix}users WHERE id = %d", $referred_id[0]
         )
     );
+
+    echo $wpdb->last_query;
+    echo $referred_id[0] . 'heyd';
+    echo '<pre>';
+          print_r( $referred_id );
+          print_r( $_SESSION['PHP_REFID'] );
+          echo idRandDecode('Jk05rLzGZYjPe')[0];
+    echo '</pre>';
     
     $class        = 'ic-referred-message';
     $id           = 'ic-referred-message';
