@@ -23,10 +23,11 @@ class Subscribers_List_Table extends \WP_List_Table {
             'expire_date'      => __( 'Expired At', 'itc-refer-a-friend' ),
             'user_id'      => __( 'User ID', 'itc-refer-a-friend' ),
             // 'points'     => __( 'Points', 'itc-refer-a-friend' ),
+            'accept_total_points'  => 'Total Points',
+            'update'     => __( 'Update Points', 'itc-refer-a-friend' ),
             // 'update'     => __( 'Update Points', 'itc-refer-a-friend' ),
             // 'created_at' => __( 'Registration Date', 'itc-refer-a-friend' ),
             // 'expired_at' => __( 'Expired Date', 'itc-refer-a-friend' ),
-            'accept_total_points'  => 'total points'
         );
 
         return $columns;
@@ -158,13 +159,14 @@ class Subscribers_List_Table extends \WP_List_Table {
     }
 
     public function column_update( $item ) {
-        // return $item['update'];
-        // return sprintf(
-        //     '<a href="%1$s"><strong>%2$s</strong></a> %3$s',
-        //     admin_url( '#' . 1 ),
-        //     $item->name
-        // );
+        wp_nonce_field( "update_point_nonce", "nonce" );
+        return sprintf(
+            '<form method="post" action="'. admin_url('admin-post.php').'"><input type="number" name="update_point" value="'.$item['accept_total_points'].'"/>
+            <input type="hidden" name="action" value="itc_update_point"/>
+            <button name="itc_update_point_button" class="update_point_btn button-primary">Update</button></form>'
+        );
     }
+    
 
     // public function column_created_at( $item ) {
         // return $item['created_at'];
@@ -184,14 +186,5 @@ class Subscribers_List_Table extends \WP_List_Table {
 
     public function column_default( $item, $column_name ) {
         return $item[$column_name];
-        // switch ( $column_name ) {
-        // case 'value':
-        //     break;
-
-        // default:
-        //     return isset( $item[$column_name] ) ? $item[$column_name] : '';
-        // }
-
-        // return $item->$column_name;
     }
 }

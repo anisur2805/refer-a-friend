@@ -1,4 +1,4 @@
-<?php
+a<?php
 /**
  * Copy to Clipboard
  */
@@ -81,11 +81,10 @@ function ic_send_email() {
     $subject        = 'Test Email';
     $refer_link     = ic_generate_referral_links();
     // $refer_link    .= '&raf-verify='.encryptToken();
-    $message        = 'This is a refer mail. Please open the link to register and you will get 500 points. Here is the link: ' . esc_url( $refer_link);
+    $message        = 'This is a refer mail. Please open the link to register and you will get 500 points. Here is the link: <a rel="nofollow" href="' . esc_url( $refer_link) . '">Referral Link</a>';
     $headers        = array('Content-Type: text/html; charset=UTF-8');
 
     wp_mail($to, $subject, $message, $headers);
-    die;
 }
 
 

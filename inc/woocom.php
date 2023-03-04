@@ -32,7 +32,7 @@ function check_referrer_purchase_minimum_5_pound() {
 // check_referrer_purchase_minimum_5_pound();
 // die("hello");
 
-add_action('woocommerce_review_order_before_shipping', 'itc_add_ship_info', 4);
+add_action('woocommerce_checkout_before_order_review', 'itc_add_ship_info', 4);
 function itc_add_ship_info() {
     global $wpdb;
     global $woocommerce;
@@ -41,24 +41,20 @@ function itc_add_ship_info() {
     $_cart_total = $cart_total;
     $points     = $wpdb->get_row(
         $wpdb->prepare(
-            "SELECT SUM(accept_total_points) AS total_points FROM {$wpdb->prefix}user_referred WHERE referred_by_user_id = %d",
+            "SELECT SUM(accept_total_points) AS total_points FROM {$wpdb->prefix}user_referred WHERE accepted_user_id = %d",
             get_current_user_id()
         )
     );
 
-    // $points  = 500;
+
     $message = '';
-    $points  = $points->accept_total_points; // TODO: need to update
+    $points  = $points->total_points; // TODO: need to update
 
     if ($_cart_total >= 5) {
-        if ($points >= 0) {
+        if ($points >= 500) {
             $message .= "You have total {$points} points. Wanna use 500 points? <br/>";
             $message .= '<label for="itc_points_once">' . __('Yes, want to use ', 'itc-refer-a-friend') . '</label>' . "<input type='checkbox' value='1' id='itc_points_once' name='itc_points_once'/>";
-        } else {
-            $message .= 'No points available'; // TODO: need to empty this
         }
-    } else {
-        $message .= "buy some more, man"; // TODO: need to empty this
     }
     echo $message;
 }
@@ -78,7 +74,9 @@ function load_custom_scripts() {
 
 add_action('woocommerce_cart_calculate_fees', 'itc_discount_rewards_cost', 10, 1);
 function itc_discount_rewards_cost($cart) {
+    global $wpdb;
     $discount = 5;
+    $user_id = get_current_user_id();
 
     if (!$_POST || (is_admin() && !is_ajax())) {
         return;
@@ -122,23 +120,49 @@ function show_custom_message() {
     }
 
     $referred_id = idRandDecode( $_SESSION['PHP_REFID'] );
-    $user_name   = $wpdb->get_row(
+
+    $user_id   = $wpdb->get_row(
         $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}users WHERE id = %d", $referred_id[0]
+            "SELECT user_id FROM {$wpdb->prefix}referral_links WHERE id = %d", $referred_id[0]
         )
     );
 
-    echo $wpdb->last_query;
-    echo $referred_id[0] . 'heyd';
-    echo '<pre>';
-          print_r( $referred_id );
-          print_r( $_SESSION['PHP_REFID'] );
-          echo idRandDecode('Jk05rLzGZYjPe')[0];
-    echo '</pre>';
+    $user_name   = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}users WHERE id = %d", $user_id->user_id
+        )
+    );
+
     
     $class        = 'ic-referred-message';
     $id           = 'ic-referred-message';
     $message      = "You just been referred by <strong>{$user_name->display_name}</strong>. You both receive £5. Once you register, you can do the same and get another £5 for every person you refer.";
     $allowed_html = array( 'strong' => array() );
     printf( '<div class="%1$s" id="%2$s"><p>%3$s</p></div>', esc_attr( $class ), esc_attr( $id ), wp_kses( $message, $allowed_html ) );
+}
+
+/**
+ * Update logged-in user total poins
+ */
+// itc_update_user_total_points_after_uses();
+add_action( 'woocommerce_checkout_update_order_meta', 'itc_update_user_total_points_after_uses' );
+function itc_update_user_total_points_after_uses() {
+    global $wpdb;
+    $id         = get_current_user_id();
+    $table_name = $wpdb->prefix . 'user_referred';
+    $points     = $wpdb->get_var( $wpdb->prepare( "SELECT accept_total_points FROM $table_name WHERE accepted_user_id = %d", $id ) );
+
+    if( $points >= 500 ) {
+        $wpdb->update(
+            $table_name,
+            array(
+                'accept_total_points' => $points -500,
+                'updated_at'          => date('Y-m-d H:i:s'),
+            ),
+            array('accepted_user_id' => $id),
+            array('%s', '%s' ),
+            array('%s')
+        );
+    }
+
 }

@@ -17,3 +17,8 @@
 [Register at field]
 15. update total points after user use 
 16. Referrer will get 5 dollar after 30 days of 
+17. Update user table total points
+18. Update total price in checkout page after use - done
+19. Email button need to fix - done
+20. Before buy again show age verify popup
+21. WooCommerce Email verify link need to modify and add custom query parameter
