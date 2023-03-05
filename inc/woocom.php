@@ -25,7 +25,9 @@ function check_referrer_purchase_minimum_5_pound() {
     $total_spent = 0;
     foreach ( $customer_orders as $order ) {
         foreach ( $order->get_items() as $item ) {
-            $total_spent += $item->get_total();
+            if ( $item instanceof WC_Order_Item_Product ) {
+                $total_spent += $item->get_total();
+            }
         }
     }
     return wc_price($total_spent);
