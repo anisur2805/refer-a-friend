@@ -123,13 +123,13 @@ function show_custom_message() {
 
     $user_id   = $wpdb->get_row(
         $wpdb->prepare(
-            "SELECT user_id FROM {$wpdb->prefix}referral_links WHERE id = %d", $referred_id[0]
+            "SELECT * FROM {$wpdb->prefix}referral_links WHERE id = %d", (int) $referred_id[0]
         )
     );
 
     $user_name   = $wpdb->get_row(
         $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}users WHERE id = %d", $user_id->user_id
+            "SELECT * FROM {$wpdb->prefix}users WHERE id = %d", (int) $user_id->user_id
         )
     );
 
