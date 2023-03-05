@@ -1,4 +1,7 @@
 <?php
+if (!defined('ABSPATH')) {
+    exit;
+}
 
 /**
  * Check is the referred person buy minimum 5 pound excluding taxes, 
@@ -61,14 +64,14 @@ function itc_add_ship_info() {
 
 add_action('wp_footer', 'load_custom_scripts');
 function load_custom_scripts() {
-    if (is_checkout()) { ?>
+    if (is_checkout()) {?>
         <script type="text/javascript">
             jQuery(document).ready(function($) {
                 $("body").on("click", "#itc_points_once", function() {
                     jQuery('body').trigger('update_checkout');
                 });
             });
-        </script> <?php
+        </script><?php
     }
 }
 

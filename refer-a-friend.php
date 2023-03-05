@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Plugin Name: Refer A Friend
  * Description: Awesome Desc...
@@ -11,13 +10,11 @@
  * License:     GPL v2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  */
-
-// Start or resume a session
 if (!session_id()) {
     session_start();
 }
 
- if (!defined('ABSPATH')) {
+if (!defined('ABSPATH')) {
     exit;
 }
 
@@ -85,10 +82,9 @@ function ic_admin_menu() {
 function referral_page_callback() {
 ?>
     <div class="wrap">
-        <h1><?php echo get_admin_page_title(); ?> </h1>
-        <?php ?>
+        <h1><?php echo get_admin_page_title(); ?></h1>
         <form id="art-search-form" method="GET">
-            <?php
+<?php
             global $wpdb;
             $refer_links = $wpdb->get_results("SELECT id, created_at, expire_date, user_id FROM {$wpdb->prefix}referral_links", ARRAY_A);
             $user_referred = $wpdb->get_results("SELECT accept_total_points FROM {$wpdb->prefix}user_referred", ARRAY_A);
@@ -311,51 +307,6 @@ function ic_user_has_referred() {
     return $wpdb->insert_id;
 }
 
-// Insert user referred data
-function ic_insert_data_user_referred() {
-    global $wpdb;
-
-    if (is_login()) {
-        return;
-    }
-    $id = get_current_user_id();
-
-    $referrer_link_id = get_referred_data();
-    $refer_link       = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}referral_links WHERE user_id = %d LIMIT 1", $referrer_link_id));
-
-    if (is_null($refer_link)) {
-        return;
-    }
-
-    $data = [
-        'accepted_user_id'    => get_current_user_id(),
-        'referred_by_user_id' => $refer_link->user_id,
-        'refer_links_id'      => $refer_link->id,
-    ];
-
-    // if ( $email_verified && $age_verified ) {
-
-    $old_rewards = get_total_points($id);
-    // $wpdb->update(
-    //     $wpdb->prefix . 'user_referred',
-    //     array(
-    //         'status'              => 1,
-    //         'updated_at'          => date('Y-m-d H:i:s'),
-    //         'accept_total_points' => $old_rewards->accept_total_points + 500,
-    //         'accepted_user_id'    => get_current_user_id(),
-    //         'referred_by_user_id' => $refer_link->user_id,
-    //         'refer_links_id'      => $refer_link->id,
-    //     ),
-    //     array('accepted_user_id' => $id)
-    // );
-
-    // } else { //     $wpdb->update( //         $wpdb->prefix."user_referred", //         [ //             'referred_by_user_id' => $refer_link->user_id, //             'refer_links_id'      => $refer_link->id, //         ], //         array( 'accepted_user_id' => get_current_user_id() ), //         array( //             '%d', //             '%d' //         ), //         array( '%d' ) //     ); // } // $inserted = $wpdb->insert( "{$wpdb->prefix}user_referred", $data, ['%d', '%d', '%d'] ); // if ( !$inserted ) { //     return new \WP_Error( 'failed-to-insert', __( 'Failed to insert' ) ); // }
-    return $wpdb->insert_id;
-}
-
-// TODO: this hooks should be user-login/register
-// add_action( 'init', 'ic_insert_data_user_referred' );
-
 /**
  * Check is verified
  */
@@ -495,104 +446,3 @@ function update_referrer_points_after_30days() {
 }
 
 // update_referrer_points_after_30days();
-
-/**
- * Update total points from admin dashboard area
- * For Admin
- */
-// add_action('admin_post_itc_update_point', function() {
-//     die( 'you must die' );
-//     global $wpdb;
-//     $nonce = sanitize_text_field( $_POST['nonce'] );
-//     if( wp_verify_nonce( $nonce, 'update_point_nonce' ) ) {
-//         $updated_point = $_POST['update_point'];
-
-//         $wpdb->update(
-//             $wpdb->prefix.'user_referred',
-//             [ 'accept_total_points' => $updated_point ],
-//             [ 'accepted_user_id'    => 37]
-//         );
-
-//         // $query = $wpdb->prepare(
-//         //     "UPDATE $table_name SET accept_total_points = accept_total_points + %d WHERE accepted_user_id = %d LIMIT 1",
-//         //     $updated_point,
-//         //     $accepted_user_id
-//         // );
-    
-//         // $wpdb->query($query);
-        
-//     } else {
-//         die('Nonce not verified');
-//     }
-
-//     wp_redirect( admin_url('options-general.php?page=referral-options') );
-// });
-
-
-
-
-// Schedule an event to run itc_update_referrer_points_after_10mins() function every 10 minutes
-function schedule_referrer_points_update() {
-    if ( ! wp_next_scheduled( 'update_referrer_points_event' ) ) {
-        wp_schedule_event( time(), 'every_10_minutes', 'update_referrer_points_event' );
-    }
-}
-add_action( 'wp', 'schedule_referrer_points_update' );
-
-// Define the custom cron interval
-function add_custom_cron_intervals( $schedules ) {
-    $schedules['every_10_minutes'] = array(
-        'interval' => 10,
-        'display'  => __( 'Every 10 Minutes' ),
-    );
-    return $schedules;
-}
-add_filter( 'cron_schedules', 'add_custom_cron_intervals' );
-
-// Execute the itc_update_referrer_points_after_10mins() function when the scheduled event fires
-function update_referrer_points_cron_callback() {
-    itc_update_referrer_points_after_10mins();
-}
-add_action( 'update_referrer_points_event', 'update_referrer_points_cron_callback' );
-
-// Update the referrer points after 10 minutes
-function itc_update_referrer_points_after_10mins() {
-    global $wpdb;
-
-    $table_name = $wpdb->prefix . 'user_referred';
-    $referrer_total_points = 1234;
-    $referred_by_user_id = 65;
-
-    $query = $wpdb->prepare(
-        "UPDATE {$table_name}
-        SET referrer_total_points = referrer_total_points + %d
-        WHERE referred_by_user_id = %d 
-        AND updated_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE) 
-        LIMIT 1",
-        $referrer_total_points,
-        $referred_by_user_id
-    );
-
-    $wpdb->query( $query );
-}
-
-/**
- * Clear schedule during uninstall time
- */
-register_uninstall_hook( __FILE__, 'itc_uninstall_hook' );
-function itc_uninstall_hook() {
-	wp_clear_scheduled_hook( 'update_referrer_points_event' );
-}
-
-
-function itc_modify_popup_content( $content ) {
-    $content = "Hey man";
-    return $content;
-}
-add_filter( 'avwp_after_popup_content', 'itc_modify_popup_content' );
-
-function itc_redirect_if_failed( $content ) {
-    $content = "Hey man";
-    return $content;
-}
-add_filter( 'avwp_redirect_on_fail_link', 'itc_redirect_if_failed' );

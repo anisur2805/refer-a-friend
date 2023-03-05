@@ -1,4 +1,7 @@
-a<?php
+<?php
+if (!defined('ABSPATH')) {
+    exit;
+}
 /**
  * Copy to Clipboard
  */
