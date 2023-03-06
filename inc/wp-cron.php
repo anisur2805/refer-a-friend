@@ -20,26 +20,19 @@ function add_custom_cron_intervals( $schedules ) {
 add_filter( 'cron_schedules', 'add_custom_cron_intervals' );
 
 function update_referrer_points_cron_callback() {
-    // direct call create issue here
-    // update_referrer_points_after_10mins();
+    update_referrer_points_after_10mins();
 }
 add_action( 'update_referrer_points_event', 'update_referrer_points_cron_callback' );
 
-/**
- * A > B
- * 5 min
- * 30 
- */
 function update_referrer_points_after_10mins() {
     global $wpdb;
 
     $table_name            = $wpdb->prefix . 'user_referred';
-    $referrer_total_points = 500;
+    $referrer_total_points = 111;
     $referred_by_user_id   = 45;
 
     // check here refer person buy min 5 pound
     $buy_min_5_pounds = check_referrer_purchase_minimum_5_pound();
-
 
     $query = $wpdb->prepare(
         "UPDATE {$table_name}
@@ -50,6 +43,5 @@ function update_referrer_points_after_10mins() {
         $referrer_total_points,
         $referred_by_user_id
     );
-
     $wpdb->query( $query );
 }

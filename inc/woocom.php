@@ -3,40 +3,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-/**
- * Check is the referred person buy minimum 5 pound excluding taxes, 
- */
-function check_referrer_purchase_minimum_5_pound() {
-    global $wpdb;
-    if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
-        return;
-    }
-
-    $user_id = $wpdb->query(
-        $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}user_referred WHERE referred_by_user_id = %d AND accepted_user_id != 0", get_current_user_id()
-        )
-    );
-
-    $customer_orders = wc_get_orders( array(
-        'customer_id' => $user_id,
-        'status' => array( 'wc-completed', 'wc-processing' )
-    ) );
-    $total_spent = 0;
-    foreach ( $customer_orders as $order ) {
-        foreach ( $order->get_items() as $item ) {
-            if ( $item instanceof WC_Order_Item_Product ) {
-                $total_spent += $item->get_total();
-            }
-        }
-    }
-    return wc_price($total_spent);
-}
-// TODO: hook 
-// add_action('init', 'check_referrer_purchase_minimum_5_pound');
-// check_referrer_purchase_minimum_5_pound();
-// die("hello");
-
 add_action('woocommerce_checkout_before_order_review', 'itc_add_ship_info', 4);
 function itc_add_ship_info() {
     global $wpdb;
@@ -170,4 +136,35 @@ function itc_update_user_total_points_after_uses() {
         );
     }
 
+}
+
+/**
+ * Check is the referred person buy minimum 5 pound excluding taxes, 
+ */
+function check_referrer_purchase_minimum_5_pound() {
+    global $wpdb;
+
+    if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
+        return;
+    }
+
+    $user_id = $wpdb->query(
+        $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}user_referred WHERE referred_by_user_id = 45 AND accepted_user_id != %d", 46
+        )
+    );
+
+    $customer_orders = wc_get_orders( array(
+        'customer_id' => 42,
+        'status' => array( 'wc-completed', 'wc-processing' )
+    ) );
+    $total_spent = 0;
+    foreach ( $customer_orders as $order ) {
+        foreach ( $order->get_items() as $item ) {
+            if ( $item instanceof WC_Order_Item_Product ) {
+                $total_spent += $item->get_total();
+            }
+        }
+    }
+    return wc_price($total_spent);
 }
