@@ -64,15 +64,21 @@ function current_reward_points() {
  * Display login user total rewards as points
  */
 add_shortcode('email_share', 'ic_email_share');
+// function ic_email_share() {
+//     // global $wpdb;
+//     // $user_id        = get_current_user_id();
+//     // $total_referred = $wpdb->query(
+//     //     $wpdb->prepare( "SELECT accept_total_points FROM {$wpdb->prefix}user_referred WHERE referred_by_user_id = %d", $user_id )
+//     // );
+//     $output = '';
+//     $output .= '<a href="" id="send_email"><i class="icon-default-style fa fa-envelope-o extra-color-2"></i> Email</a>';
+//     return $output;
+// }
+
 function ic_email_share() {
-    // global $wpdb;
-    // $user_id        = get_current_user_id();
-    // $total_referred = $wpdb->query(
-    //     $wpdb->prepare( "SELECT accept_total_points FROM {$wpdb->prefix}user_referred WHERE referred_by_user_id = %d", $user_id )
-    // );
-    $output = '';
-    $output .= '<a href="" id="send_email"><i class="icon-default-style fa fa-envelope-o extra-color-2"></i> Email</a>';
-    return $output;
+    $refer_link = ic_generate_referral_links();
+    $subject    = __( 'Click on this link', 'itc-refer-a-friend' ); 
+    return '<a id="send_email" href="mailto:?subject='.$subject.'&body=Hi%20there,%20I%20just%20wanted%20to%20share%20this%20cool%20website%20with%20you.%20Check%20it%20out:%20' . esc_url( $refer_link ) . '"><i class="icon-default-style fa fa-envelope-o extra-color-2"></i> Email</a>';
 }
 
 /**

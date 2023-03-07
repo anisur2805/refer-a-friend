@@ -28,11 +28,13 @@ function update_referrer_points_after_10mins() {
     global $wpdb;
 
     $table_name            = $wpdb->prefix . 'user_referred';
-    $referrer_total_points = 111;
-    $referred_by_user_id   = 45;
+    $referrer_total_points = 500;
+    $referred_by_user_id   = 65;
 
     // check here refer person buy min 5 pound
-    $buy_min_5_pounds = check_referrer_purchase_minimum_5_pound();
+    if( ! check_referrer_purchase_minimum_5_pound() >= 5 ) {
+        return;
+    }
 
     $query = $wpdb->prepare(
         "UPDATE {$table_name}

@@ -23,12 +23,12 @@
     }
 
     $(document).ready(function () {
-        $("#send_email").click(function (e) {
-            e.preventDefault();
-            var data = {
-                action: "ic_send_email",
-            }
-            $.post( icAjaxHandler.ajaxUrl, data, function (response) {})
+        // $("#send_email").click(function (e) {
+        //     e.preventDefault();
+        //     var data = {
+        //         action: "ic_send_email",
+        //     }
+        //     $.post( icAjaxHandler.ajaxUrl, data, function (response) {})
 
             // var to = "anisur2805@gmail.com"
             // var subject = "Test Email"
@@ -37,6 +37,6 @@
             // var mailtoLink =
             //     "mailto:" + to + "?subject=" + subject + "&body=" + body
             // window.open(mailtoLink)
-        });
+        // });
     })
 })(jQuery);

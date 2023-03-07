@@ -6,7 +6,7 @@
  * Version:     1.0
  * Author:      http://github.com/test
  * Author URI:  http://github.com/anisur2805/
- * Text Domain: test-domain
+ * Text Domain: itc-refer-a-friend
  * License:     GPL v2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
  */
@@ -423,27 +423,3 @@ function ic_calculate_points_to_pound() {
 // ic_calculate_points_to_pound();
 
 // session_destroy();
-
-/**
- * Update referrer user after 30days gone
- */
-function update_referrer_points_after_30days() {
-    global $wpdb;
-
-    $table_name            = $wpdb->prefix . 'user_referred';
-    $referrer_total_points = 500;
-    $referred_by_user_id   = 30;
-
-    $query = $wpdb->prepare(
-        "UPDATE {$table_name} 
-        SET referrer_total_points = 500
-        WHERE referred_by_user_id = %d 
-        AND updated_at < DATE_SUB(NOW(), INTERVAL 30 DAY) 
-        LIMIT 1",
-        $referrer_total_points,
-        $referred_by_user_id
-    );
-    $wpdb->query( $query );
-}
-
-// update_referrer_points_after_30days();
