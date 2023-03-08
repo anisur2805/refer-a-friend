@@ -160,7 +160,7 @@ function ic_create_referral_link() {
     //     return;
     // }
 
-    // select * from referral_links where usrid = id order by desc limit 1 and
+    // select * from referral_links where user_id = id order by desc limit 1 and
     $today   = date('Y-m-d') . " 23:59:59";
     $query   = "SELECT * FROM {$wpdb->prefix}referral_links WHERE user_id = $id AND expire_date > '$today' ORDER BY id DESC LIMIT 1";
     $get_row = $wpdb->get_row($query);
@@ -370,7 +370,7 @@ get_referred_data();
             $wpdb->update(
                 $user_referred_table,
                 [
-                    'status'              => 55,
+                    'status'              => 1,
                     'updated_at'          => date('Y-m-d H:i:s'),
                     // 'accept_total_points' => $old_rewards->accept_total_points + 500,
                     'accept_total_points' => 500,
@@ -395,7 +395,7 @@ get_referred_data();
     }
 }
 
-// TODO: 1 wronmg
+// TODO: 1 wrong msg
 // ic_update_user_status(); // TODO: this run continueusly
 
 function get_total_points($user_id) {

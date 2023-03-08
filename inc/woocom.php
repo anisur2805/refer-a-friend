@@ -3,6 +3,9 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Show message that user has 500 points and can use the points
+ */
 add_action('woocommerce_checkout_before_order_review', 'itc_add_ship_info', 4);
 function itc_add_ship_info() {
     global $wpdb;
@@ -10,7 +13,7 @@ function itc_add_ship_info() {
 
     $cart_total = $woocommerce->cart->total;
     $_cart_total = $cart_total;
-    $points     = $wpdb->get_row(
+    $points     = $wpdb->get_var(
         $wpdb->prepare(
             "SELECT SUM(accept_total_points) AS total_points FROM {$wpdb->prefix}user_referred WHERE accepted_user_id = %d",
             get_current_user_id()
@@ -19,13 +22,10 @@ function itc_add_ship_info() {
 
 
     $message = '';
-    $points  = $points->total_points; // TODO: need to update
 
-    if ($_cart_total >= 5) {
-        if ($points >= 500) {
-            $message .= "<div class='itc__reward-points'></div>You have total {$points} points. Wanna use 500 points? <br/>";
-            $message .= '<label for="itc_points_once">' . __('Yes, want to use ', 'itc-refer-a-friend') . '</label>' . "<input type='checkbox' value='1' id='itc_points_once' name='itc_points_once'/>";
-        }
+    if ($_cart_total >= 5 && $points >= 500) {
+        $message .= "<div class='itc__reward-points'></div>You have total {$points} points. Wanna use 500 points? <br/>";
+        $message .= '<label for="itc_points_once">' . __('Yes, want to use ', 'itc-refer-a-friend') . '</label>' . "<input type='checkbox' value='1' id='itc_points_once' name='itc_points_once'/>";
     }
     echo $message;
 }
@@ -43,6 +43,9 @@ function load_custom_scripts() {
     }
 }
 
+/**
+ * Calculate the total amount and subtract if use 500 points
+ */
 add_action('woocommerce_cart_calculate_fees', 'itc_discount_rewards_cost', 10, 1);
 function itc_discount_rewards_cost($cart) {
     global $wpdb;
@@ -69,6 +72,8 @@ function itc_discount_rewards_cost($cart) {
 
 /**
  * Display custom message for newly registered user first time
+ * 
+ * show copy/ share link in my-account page
  */
 add_action( 'woocommerce_account_content', 'show_custom_message', 7 );
 function show_custom_message() {
@@ -113,29 +118,69 @@ function show_custom_message() {
 }
 
 /**
- * Update logged-in user total poins
+ * Update logged-in user total points
  */
 // itc_update_user_total_points_after_uses();
-add_action( 'woocommerce_checkout_update_order_meta', 'itc_update_user_total_points_after_uses' );
-function itc_update_user_total_points_after_uses() {
+// add_action( 'woocommerce_checkout_update_order_meta', 'itc_use_points_discount' );
+function itc_use_points_discount( $order_id ) {
+    // global $wpdb;
+    // $id         = get_current_user_id();
+    // $table_name = $wpdb->prefix . 'user_referred';
+    // $points     = $wpdb->get_var( $wpdb->prepare( "SELECT accept_total_points FROM $table_name WHERE accepted_user_id = %d", $id ) );
+
+    // if( $points >= 500 ) {
+    //     $wpdb->update(
+    //         $table_name,
+    //         array(
+    //             'accept_total_points' => $points -500,
+    //             'updated_at'          => date('Y-m-d H:i:s'),
+    //         ),
+    //         array('accepted_user_id' => $id),
+    //         array('%s', '%s' ),
+    //         array('%s')
+    //     );
+    // }
+
+    $order = wc_get_order($order_id);
+    $user_id = get_current_user_id();
+    $points = (int) get_user_meta( $user_id, 'total_points', true );
+    if (isset($_POST['itc_points_once']) && $_POST['itc_points_once'] == 1 && $points >= 500) {
+        $discount_amount = 5.00;
+        $order->add_order_note( __('Points discount applied', 'woocommerce') );
+        $order->set_discount_total( $discount_amount );
+        $order->set_total( $order->get_total() - $discount_amount );
+        update_user_meta( $user_id, 'total_points', $points - 500 );
+    }
+}
+
+/**
+ * Update user table after they use the 500 points
+ */
+add_action( 'woocommerce_order_status_completed', 'itc_update_user_total_points_after_order_completed' );
+// add_action( 'woocommerce_payment_complete', 'itc_update_user_total_points_after_order_completed' );
+function itc_update_user_total_points_after_order_completed( $order_id ) {
     global $wpdb;
     $id         = get_current_user_id();
     $table_name = $wpdb->prefix . 'user_referred';
     $points     = $wpdb->get_var( $wpdb->prepare( "SELECT accept_total_points FROM $table_name WHERE accepted_user_id = %d", $id ) );
 
-    if( $points >= 500 ) {
-        $wpdb->update(
-            $table_name,
-            array(
-                'accept_total_points' => $points -500,
-                'updated_at'          => date('Y-m-d H:i:s'),
-            ),
-            array('accepted_user_id' => $id),
-            array('%s', '%s' ),
-            array('%s')
-        );
-    }
 
+    if( $points >= 500 ) {
+        $wpdb->update( 
+            $table_name, 
+            [
+                'accept_total_points'   => $points - 500,
+                'updated_at'            => date('Y-m-d H:i:s'),
+            ],
+            [ 'accepted_user_id'      => $id ],
+            [  '%d', '%s' ],
+            [ '%d' ]
+        );
+
+        // Add a note to the order to indicate that the discount was used
+        $order  = wc_get_order( $order_id );
+        $order->add_order_note( 'Discount used - 5 off' );
+    }
 }
 
 /**
@@ -182,4 +227,27 @@ function check_referrer_purchase_minimum_5_pound() {
         return wc_price($total_spent);
     }
 }
- 
+
+// global $wpdb;
+//     $id         = get_current_user_id();
+//     $table_name = $wpdb->prefix . 'user_referred';
+//     $points     = $wpdb->get_var( $wpdb->prepare( "SELECT accept_total_points FROM $table_name WHERE accepted_user_id = %d", $id ) );
+
+//     // need check if the user use points
+
+//     if( $points >= 500 ) {
+//         $wpdb->update( 
+//             $table_name, 
+//             [
+//                 'accept_total_points'   => $points - 500,
+//                 'updated_at'            => date('Y-m-d H:i:s'),
+//             ],
+//             [ 'accepted_user_id'      => $id ],
+//             [  '%d', '%s' ],
+//             [ '%d' ]
+//         );
+        
+//         echo $wpdb->last_query;
+//         die( 'you must die' );
+        
+//     }

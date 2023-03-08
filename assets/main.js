@@ -4,7 +4,7 @@
     if (typeof notice !== "undefined" && notice !== null) {
         setTimeout(function () {
             notice.style.display = "none"
-        }, 60000) // 30 seconds
+        }, 60000) // 1 minute
     }
 
     // Copy Referral Code
