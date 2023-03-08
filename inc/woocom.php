@@ -156,14 +156,13 @@ function itc_use_points_discount( $order_id ) {
 /**
  * Update user table after they use the 500 points
  */
-add_action( 'woocommerce_order_status_completed', 'itc_update_user_total_points_after_order_completed' );
+add_action( 'woocommerce_thankyou', 'itc_update_user_total_points_after_order_completed' );
 // add_action( 'woocommerce_payment_complete', 'itc_update_user_total_points_after_order_completed' );
 function itc_update_user_total_points_after_order_completed( $order_id ) {
     global $wpdb;
     $id         = get_current_user_id();
     $table_name = $wpdb->prefix . 'user_referred';
     $points     = $wpdb->get_var( $wpdb->prepare( "SELECT accept_total_points FROM $table_name WHERE accepted_user_id = %d", $id ) );
-
 
     if( $points >= 500 ) {
         $wpdb->update( 
@@ -180,6 +179,8 @@ function itc_update_user_total_points_after_order_completed( $order_id ) {
         // Add a note to the order to indicate that the discount was used
         $order  = wc_get_order( $order_id );
         $order->add_order_note( 'Discount used - 5 off' );
+    } else {
+        echo "less than 500";
     }
 }
 
