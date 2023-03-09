@@ -118,7 +118,7 @@ function encryptToken() {
 
 function decryptToken(){
     $query = encryptToken();
-    var_dump($query);
+    // var_dump($query);
 
     $retrieve = '';
     parse_str($query, $retrieve);

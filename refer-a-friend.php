@@ -37,12 +37,18 @@ require_once plugin_dir_path(__FILE__) . 'inc/shortcodes.php';
 require_once plugin_dir_path(__FILE__) . 'inc/woocom.php';
 require_once plugin_dir_path(__FILE__) . 'inc/Subscribers_List_Table.php';
 require_once plugin_dir_path(__FILE__) . 'inc/wp-cron.php';
+// require_once plugin_dir_path(__FILE__) . 'inc/popup.php';
 
 function ic_enqueue_styles() {
     wp_enqueue_style('ic-styles', plugins_url('assets/style.css', __FILE__));
-    wp_enqueue_script('ic-main', plugins_url('assets/main.js', __FILE__), array('jquery'), time(), true);
+    wp_enqueue_script('ic-main', plugins_url('assets/main.js', __FILE__), array('jquery', 'dispensary-age-verification' ), time(), true);
+    wp_enqueue_script('ic-popup', plugins_url('assets/popup.js', __FILE__), array('jquery' ), time(), true);
 
     wp_localize_script('ic-main', 'icAjaxHandler', [
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+    ]);
+    
+    wp_localize_script('ic-popup', 'icPopupObj', [
         'ajaxUrl' => admin_url('admin-ajax.php'),
     ]);
 }

@@ -38,5 +38,25 @@
             //     "mailto:" + to + "?subject=" + subject + "&body=" + body
             // window.open(mailtoLink)
         // });
-    })
+
+        // let checkoutBtn = document.querySelector('button[name="woocommerce_checkout_place_order"]');
+        // if( typeof checkoutBtn !== "undefined" && checkoutBtn !== null ) {
+        //     checkoutBtn.addEventListener('click', function() {
+        //         alert("hello")
+        //         $.ageCheck();
+        //     })
+        // }
+
+
+    });
+
+    jQuery(document).ready(function($) {      
+        // Attach a click event handler to your custom button
+        $('body').on('click', '#place_order', function(e) {
+            e.preventDefault();
+            alert("hello");
+            $(".itc-av-wrapper").show();
+        });
+      });
+      
 })(jQuery);

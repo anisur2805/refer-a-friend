@@ -179,8 +179,6 @@ function itc_update_user_total_points_after_order_completed( $order_id ) {
         // Add a note to the order to indicate that the discount was used
         $order  = wc_get_order( $order_id );
         $order->add_order_note( 'Discount used - 5 off' );
-    } else {
-        echo "less than 500";
     }
 }
 
@@ -195,7 +193,7 @@ function check_referrer_purchase_minimum_5_pound() {
     }
 
     $users_id = $wpdb->get_results(
-        "SELECT referrer_total_points, id FROM {$wpdb->prefix}user_referred WHERE referrer_total_points != 0"
+        "SELECT id, referrer_total_points FROM {$wpdb->prefix}user_referred WHERE referrer_total_points != 0"
     );
 
     foreach( $users_id as $user_id['id'] ) {
@@ -211,6 +209,7 @@ function check_referrer_purchase_minimum_5_pound() {
                 $referred_id = $order->get_meta( 'referred_by_user_id', true );
                 if( $referred_id ) {
                     $points = 500;
+
                     $referral_points = get_user_meta( $referred_id, 'referrer_total_points', true );
                     update_user_meta( $referred_id, 'referrer_total_points', $referral_points + $points );
                 }
@@ -228,27 +227,3 @@ function check_referrer_purchase_minimum_5_pound() {
         return wc_price($total_spent);
     }
 }
-
-// global $wpdb;
-//     $id         = get_current_user_id();
-//     $table_name = $wpdb->prefix . 'user_referred';
-//     $points     = $wpdb->get_var( $wpdb->prepare( "SELECT accept_total_points FROM $table_name WHERE accepted_user_id = %d", $id ) );
-
-//     // need check if the user use points
-
-//     if( $points >= 500 ) {
-//         $wpdb->update( 
-//             $table_name, 
-//             [
-//                 'accept_total_points'   => $points - 500,
-//                 'updated_at'            => date('Y-m-d H:i:s'),
-//             ],
-//             [ 'accepted_user_id'      => $id ],
-//             [  '%d', '%s' ],
-//             [ '%d' ]
-//         );
-        
-//         echo $wpdb->last_query;
-//         die( 'you must die' );
-        
-//     }

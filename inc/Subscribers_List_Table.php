@@ -148,7 +148,7 @@ class Subscribers_List_Table extends \WP_List_Table {
     }
 
     public function column_name( $item ) {
-        var_dump($item);
+        // var_dump($item);
         
         // return $item['name'];
     }

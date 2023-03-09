@@ -20,40 +20,31 @@ function add_custom_cron_intervals( $schedules ) {
 add_filter( 'cron_schedules', 'add_custom_cron_intervals' );
 
 function update_referrer_points_cron_callback() {
-    update_referrer_points_after_10mins();
+    // update_referrer_points_after_10mins();
 }
 add_action( 'update_referrer_points_event', 'update_referrer_points_cron_callback' );
 
-update_referrer_points_after_10mins();
+// update_referrer_points_after_10mins();
 function update_referrer_points_after_10mins() {
     global $wpdb;
 
     $table_name            = $wpdb->prefix . 'user_referred';
     $referrer_total_points = 500;
     $user_id               = get_current_user_id();
-    $referred_by_user_ids  = $wpdb->get_results( "SELECT referred_by_user_id FROM $table_name WHERE accepted_user_id = " . $user_id);
-
+    // $referred_by_user_ids  = $wpdb->get_results( "SELECT referred_by_user_id FROM $table_name WHERE accepted_user_id = " . $user_id);
+    $referred_by_user_ids  = $wpdb->get_results( "SELECT referrer_total_points FROM $table_name WHERE referrer_total_points != 0");
     // var_dump($referred_by_user_ids);
-    // check here refer person buy min 5 pound // TODO: not working checking 5 dollar buy or not
-    // if( ! check_referrer_purchase_minimum_5_pound() >= 5 ) {
-    //     return;
-    // }
-        foreach( $referred_by_user_ids as $referred_by_user_id ) {
-            // var_dump($referred_by_user_id);
-
-            $query = $wpdb->prepare(
-                "UPDATE {$table_name}
-                SET referrer_total_points = %d
-                WHERE referred_by_user_id = %d
-                AND updated_at < ( DATE_SUB( NOW(), INTERVAL 10 SECOND ) )
-                LIMIT 1",
-                $referrer_total_points,
-                $referred_by_user_id->referred_by_user_id
-            );
-            $wpdb->query( $query );
-            
-           echo $wpdb->last_query;
-            die( 'you must die' );
-            
-        }
+    // die( 'you must die' );
+    foreach( $referred_by_user_ids as $referred_by_user_id ) {
+        $query = $wpdb->prepare(
+            "UPDATE {$table_name}
+            SET referrer_total_points = %d
+            WHERE referred_by_user_id = %d
+            AND updated_at < ( DATE_SUB( NOW(), INTERVAL 10 SECOND ) )
+            LIMIT 1",
+            $referrer_total_points,
+            $referred_by_user_id->referred_by_user_id
+        );
+        $wpdb->query( $query );
+    }
 }
