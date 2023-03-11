@@ -90,28 +90,67 @@ function referral_page_callback() {
 ?>
     <div class="wrap">
         <h1><?php echo get_admin_page_title(); ?></h1>
-        <form id="art-search-form" method="GET">
+
+        <!-- <form id="art-search-form" method="POST"> -->
 <?php
             global $wpdb;
-            $refer_links = $wpdb->get_results("SELECT id, created_at, expire_date, user_id FROM {$wpdb->prefix}referral_links", ARRAY_A);
-            $user_referred = $wpdb->get_results("SELECT accept_total_points FROM {$wpdb->prefix}user_referred", ARRAY_A);
 
-            $combined_array = array_merge_recursive( $refer_links, $user_referred);
-            $combined_array = [];
-            for ($i = 0; $i < count($refer_links); $i++) {
-                $combined_array[] = array_merge($refer_links[$i], $user_referred[$i]);
-            }
+            $query = "SELECT user.id, user.display_name as name, user.user_email as email, refer.accept_total_points
+          FROM {$wpdb->prefix}users as user, {$wpdb->prefix}user_referred as refer WHERE user.id = refer.accepted_user_id AND status IN (0, 1)";
+            $results = $wpdb->get_results($query, ARRAY_A);
 
-            $itc_subscriber_table = new Subscribers_List_Table( $combined_array );
+            /**
+             * Update user point
+             */
+            // if( isset( $_REQUEST['action'] ) && $_REQUEST['action'] == 'update-point' ) {
+            //     $nonce = sanitize_text_field( isset($_GET['_wpnonce'] ) ? $_GET['_wpnonce'] : '' );
+            //     if( wp_verify_nonce( $nonce, 'itc-update-nonce' ) ) {
+            //         $user_id = isset( $_GET['user_id'] ) ? $_GET['user_id'] : 0;
+            //         $points  = isset( $_REQUEST['point'] ) ? $_REQUEST['point'] : 0;
+                    
+                    
+            //         $wpdb->update(
+            //             $wpdb->prefix. 'user_referred',
+            //             [
+            //                 'accept_total_points'              => $points,
+            //                 'updated_at'          => date('Y-m-d H:i:s'),
+            //             ],
+            //             [ 'accepted_user_id' => $user_id ], // 'status' => 0
+            //             [ '%d', '%s' ],
+            //             [ '%d' ],
+            //             [ 1 ]
+            //         );
+                    
+            //     }
+            // }
+
+
+
+
+            
+
+            $itc_subscriber_table = new Subscribers_List_Table( $results );
             $itc_subscriber_table->prepare_items();
-            // $itc_subscriber_table->search_box('search', 'search_id');
             $itc_subscriber_table->display();
             ?>
-        </form>
+        <!-- </form> -->
     </div>
 <?php
 }
 
+add_action( 'admin_post_manually_submit_form', function(){
+    if ( isset( $_POST['manually_submit_form'] ) ) { //&& wp_verify_nonce( $_POST['nonce'], 'itc-update-nonce' ) 
+        die( 'you must die' );
+        $user_id = $_POST['user_id'];
+        $point   = intval( $_POST['point'] );
+        
+        // TODO: Update database with new value
+        
+        echo "Point updated successfully.";
+        wp_safe_redirect( admin_url( 'options-general.php?page=referral-options' ) );
+        exit;
+    }
+});
 
 /**
  * Create table for user referral
@@ -289,19 +328,24 @@ function ic_user_has_referred() {
 
     if( $updated_row ) {
         $old_rewards = get_total_points( $id );
-        $wpdb->update(
-            $user_referred_table,
-            [
-                'status'              => 1,
-                'updated_at'          => date('Y-m-d H:i:s'),
-                // 'accept_total_points' => $old_rewards->accept_total_points + 500,
-                'accept_total_points' => 500,
-            ],
-            [ 'accepted_user_id' => $id ], // 'status' => 0
-            [ '%d', '%s', '%d' ],
-            [ '%d' ],
-            [ 1 ]
-        );
+
+        $register_ft = get_user_meta( $id, 'register_ft', true );
+
+        if( empty( $register_ft ) ) {
+            $wpdb->update(
+                $user_referred_table,
+                [
+                    'status'              => 1,
+                    'updated_at'          => date('Y-m-d H:i:s'),
+                    'accept_total_points' => 500,
+                ],
+                [ 'accepted_user_id' => $id ], // 'status' => 0
+                [ '%d', '%s', '%d' ],
+                [ '%d' ],
+                [ 1 ]
+            );
+            update_user_meta( $id, 'register_ft', 1 );
+        }
     } else {
 
         if ( intval( $total_referred->total ) == 5 ) {
@@ -429,3 +473,88 @@ function ic_calculate_points_to_pound() {
 // ic_calculate_points_to_pound();
 
 // session_destroy();
+
+// include ABSPATH . 'wp-content/plugins/dispensary-age-verification/public/class-dispensary-age-verification-public.php';
+
+if( isset( $_POST['reload_page'])) {
+    ?>
+
+<script>
+    var date = new Date();
+    
+    var res = false;
+	var nameEQ = "age-reverification";
+	var ca = document.cookie.split(";");
+	for(var i=0;i < ca.length;i++) {
+		var c = ca[i];
+		// while (c.charAt(0)==" ") c = c.substring(1,c.length);
+		// if (c.indexOf(nameEQ) == 0) {
+        //     res = c.substring(nameEQ.length,c.length)
+            
+        // } else {
+        //     res = false;
+        // }
+
+        // c.split(";")
+        var name = c.split("=")[0]
+        res = (name.trim(" ") === nameEQ)
+        console.log( c )
+	}
+
+    console.log( {res, ca} )
+
+    if( res === false ) {
+        // document.cookie = "age-reverification='' ; expires="+date.toGMTString()+ "; path=/";
+        document.cookie = "age-verification='' ; expires="+date.toUTCString()+ "; path=/";
+    } 
+    
+
+
+</script>
+    <?php
+
+    echo $_COOKIE['age-reverification'];
+
+    if( ! isset( $_COOKIE['age-reverification'])) {
+        run_avwp(); 
+        $_COOKIE['age-reverification'] = true;
+        ?>
+        <script>
+             var now = new Date();
+            var time = now.getTime();
+            var expireTime = time + 60*60*24*30;
+            now.setTime(expireTime);
+            document.cookie = "age-reverification=true; expires="+now.toUTCString()+ "; path=/";
+        </script>
+        <?php
+
+    }
+}
+
+// add_action( 'init', 'run_avwp' );
+// add_action('wp_footer', 'abcd');
+function abcd(){?>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function(){
+        document.querySelector('.abcd').addEventListener('click', function(){
+            var date = new Date();
+            document.cookie = "age-verification='' ; expires="+date.toGMTString()+ "; path=/";
+            <?php
+                // $av = new Age_Verification();
+                // $av->run();
+                // var_dump( $av );
+                // echo "hello";
+
+                run_avwp();
+            ?>
+            console.log( 'hey' )
+            
+        });
+    });
+</script>
+    <?php
+}
+
+// add_action( 'wp_footer', 'avwp_public_js' );
+//     add_action( 'wp_head', 'avwp_public_css' );

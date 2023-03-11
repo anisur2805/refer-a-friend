@@ -22,3 +22,5 @@
 19. Email button need to fix - done
 20. Before buy again show age verify popup
 21. WooCommerce Email verify link need to modify and add custom query parameter
+22. all place check status in (0, 1) exclude 9
+23. referrer_total_points auto updated hosse during refer time

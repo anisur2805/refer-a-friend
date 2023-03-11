@@ -24,8 +24,8 @@ function itc_add_ship_info() {
     $message = '';
 
     if ($_cart_total >= 5 && $points >= 500) {
-        $message .= "<div class='itc__reward-points'></div>You have total {$points} points. Wanna use 500 points? <br/>";
-        $message .= '<label for="itc_points_once">' . __('Yes, want to use ', 'itc-refer-a-friend') . '</label>' . "<input type='checkbox' value='1' id='itc_points_once' name='itc_points_once'/>";
+        $message .= "<div class='itc__reward-points'>You have total {$points} points. Wanna use 500 points? <br/>";
+        $message .= '<label for="itc_points_once">' . __('Yes, want to use ', 'itc-refer-a-friend') . '</label>' . "<input type='checkbox' value='1' id='itc_points_once' name='itc_points_once'/></div>";
     }
     echo $message;
 }
@@ -179,51 +179,5 @@ function itc_update_user_total_points_after_order_completed( $order_id ) {
         // Add a note to the order to indicate that the discount was used
         $order  = wc_get_order( $order_id );
         $order->add_order_note( 'Discount used - 5 off' );
-    }
-}
-
-/**
- * Check is the referred person buy minimum 5 pound excluding taxes, 
- */
-function check_referrer_purchase_minimum_5_pound() {
-    global $wpdb;
-
-    if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) ) {
-        return;
-    }
-
-    $users_id = $wpdb->get_results(
-        "SELECT id, referrer_total_points FROM {$wpdb->prefix}user_referred WHERE referrer_total_points != 0"
-    );
-
-    foreach( $users_id as $user_id['id'] ) {
-        $customer_orders = wc_get_orders( [
-            'customer_id' => $user_id['id']->id,
-            'status'      => [ 'wc-completed', 'wc-processing' ]
-        ] );
-
-        // loop through the customer orders
-        foreach( $customer_orders as $order ){
-            $order_total = $order->get_total();
-            if( $order_total >= 5 ) {
-                $referred_id = $order->get_meta( 'referred_by_user_id', true );
-                if( $referred_id ) {
-                    $points = 500;
-
-                    $referral_points = get_user_meta( $referred_id, 'referrer_total_points', true );
-                    update_user_meta( $referred_id, 'referrer_total_points', $referral_points + $points );
-                }
-            }
-        }
-
-        $total_spent = 0;
-        foreach ( $customer_orders as $order ) {
-            foreach ( $order->get_items() as $item ) {
-                if ( $item instanceof WC_Order_Item_Product ) {
-                    $total_spent += $item->get_total();
-                }
-            }
-        }
-        return wc_price($total_spent);
     }
 }

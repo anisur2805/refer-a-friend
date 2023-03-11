@@ -23,40 +23,6 @@
     }
 
     $(document).ready(function () {
-        // $("#send_email").click(function (e) {
-        //     e.preventDefault();
-        //     var data = {
-        //         action: "ic_send_email",
-        //     }
-        //     $.post( icAjaxHandler.ajaxUrl, data, function (response) {})
-
-            // var to = "anisur2805@gmail.com"
-            // var subject = "Test Email"
-            // var message = "This is a test email sent from WordPress."
-            // var body = encodeURIComponent(message)
-            // var mailtoLink =
-            //     "mailto:" + to + "?subject=" + subject + "&body=" + body
-            // window.open(mailtoLink)
-        // });
-
-        // let checkoutBtn = document.querySelector('button[name="woocommerce_checkout_place_order"]');
-        // if( typeof checkoutBtn !== "undefined" && checkoutBtn !== null ) {
-        //     checkoutBtn.addEventListener('click', function() {
-        //         alert("hello")
-        //         $.ageCheck();
-        //     })
-        // }
-
-
+        
     });
-
-    jQuery(document).ready(function($) {      
-        // Attach a click event handler to your custom button
-        $('body').on('click', '#place_order', function(e) {
-            e.preventDefault();
-            alert("hello");
-            $(".itc-av-wrapper").show();
-        });
-      });
-      
 })(jQuery);

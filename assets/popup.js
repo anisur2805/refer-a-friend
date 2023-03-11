@@ -1,10 +1,10 @@
 jQuery(document).ready(function($) {
     $('form.checkout').on('submit', function(event) {
-        event.preventDefault(); // prevent default form submission
+        event.preventDefault();
         
-        var form_data = $(this).serialize(); // get form data
-        var ajax_url = icPopupObj.ajaxUrl; // your AJAX URL
-        
+        var form_data = $(this).serialize();
+        var ajax_url = icPopupObj.ajaxUrl;
+
         // send AJAX request
         $.ajax({
             url: ajax_url,

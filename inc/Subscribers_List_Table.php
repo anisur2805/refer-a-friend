@@ -7,6 +7,8 @@ if ( !class_exists( 'WP_List_Table' ) ) {
     require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
 }
 
+add_action( 'admin_post_delete_point', [ 'Subscribers_List_Table', 'delete_point' ]);
+
 class Subscribers_List_Table extends \WP_List_Table {
     private $_items;
     public function __construct( $data ) {
@@ -21,28 +23,31 @@ class Subscribers_List_Table extends \WP_List_Table {
     public function get_columns() {
 
         $columns = array(
-            'cb'       => __( '<input type="checkbox" />', 'itc-refer-a-friend' ),
-            'created_at'      => __( 'Created At', 'itc-refer-a-friend' ),
-            'expire_date'      => __( 'Expired At', 'itc-refer-a-friend' ),
-            'user_id'      => __( 'User ID', 'itc-refer-a-friend' ),
-            // 'points'     => __( 'Points', 'itc-refer-a-friend' ),
-            'accept_total_points'  => 'Total Points',
-            'update'     => __( 'Update Points', 'itc-refer-a-friend' ),
-            // 'update'     => __( 'Update Points', 'itc-refer-a-friend' ),
-            // 'created_at' => __( 'Registration Date', 'itc-refer-a-friend' ),
-            // 'expired_at' => __( 'Expired Date', 'itc-refer-a-friend' ),
+            'cb'                  => __( '<input type="checkbox" />', 'itc-refer-a-friend' ),
+            'name'                => __( 'Name', 'itc-refer-a-friend' ),
+            // 'user_id'                => __( 'User ID', 'itc-refer-a-friend' ),
+            'email'               => __( 'Email', 'itc-refer-a-friend' ),
+            'accept_total_points' => __( 'Points', 'itc-refer-a-friend' ),
+            'update'              => __( 'Update', 'itc-refer-a-friend' ),
         );
 
         return $columns;
 
     }
 
+
+    // public function single_row( $item ) {
+	// 	echo '<tr><form name="hello-form">';
+	// 	$this->single_row_columns( $item );
+	// 	echo '</form></tr>';
+	// }
+
     /**
      * Handles data query and filter, sorting, and pagination.
      */
     public function prepare_items() {
 
-        $per_page = 2;
+        $per_page = 20;
         $total_items = count( $this->_items );
         $current_page = $this->get_pagenum();
         $this->set_pagination_args([
@@ -109,24 +114,9 @@ class Subscribers_List_Table extends \WP_List_Table {
             LIMIT %d OFFSET %d",
             $args["number"], $args["offset"] )
         );
-
-        // $items[0]->accepted_user_id;
-        // $user_id = $items->accepted_user_id;
         $items = $wpdb->query(
             "SELECT display_name FROM {$wpdb->prefix}users where ID =".  $items
         );
-
-
-        // $items = $items->display_name;
-        // echo gettype($items);
-        // return $items;
-
-        // echo '<pre>';
-        //       print_r( $this->items );
-        // echo '</pre>';
-        // die;
-        // return $items;
-
     }
 
     public function itc_subscribers_count() {
@@ -147,28 +137,53 @@ class Subscribers_List_Table extends \WP_List_Table {
         // return "<input type='checkbox' name='bulk-delete[]' value='{$item["id"]}'/>";
     }
 
+
+
     public function column_name( $item ) {
-        // var_dump($item);
+        $actions = [];
+
+        $user_id = $item['id'];
+        $nonce = wp_create_nonce( 'delete-point-nc' );
+
+        // $actions['delete'] = sprintf(
+        //     '<a href="%s" class="delete-point" data-point-id="%s">%s</a>',
+        //     admin_url( "options-general.php?page=referral-options&action=delete-point&user_id={$user_id}&_wpnonce={$nonce}" ),
+        //     esc_attr( $user_id ),
+        //     __( 'Delete Point', 'itc-refer-a-friend')
+        // );
+
+        $actions['delete'] = sprintf(
+            '<form method="post" action='. admin_url( 'admin-post.php' ) .'><input type="hidden" name="user_id" value="%s" /><input type="hidden" name="action" value="delete_point" /><button name="itc-delete-point" type="submit" class="delete-point" data-point-id="%s">%s</button></form>',
+            esc_attr( $user_id ),
+            esc_attr( $user_id ),
+            __( 'Delete Point', 'itc-refer-a-friend')
+        );
+
         
-        // return $item['name'];
-    }
-
-    public function column_email( $item ) {
-        // return $item['email'];
-    }
-
-    public function column_points( $item ) {
-        // return $item['points'];
+        return sprintf(
+            '%s %s',
+            $item['name'],
+            $this->row_actions( $actions )
+        );
     }
 
     public function column_update( $item ) {
-        wp_nonce_field( "update_point_nonce", "nonce" );
+        $nonce   = wp_create_nonce( 'itc-update-nonce');
+        $user_id = $item['id'];
+        $point   = $item['accept_total_points'];
+    
         return sprintf(
-            '<form method="post" action="'. admin_url('admin-post.php').'"><input type="number" name="update_point" value="'.$item['accept_total_points'].'"/>
-            <input type="hidden" name="action" value="itc_update_point"/>
-            <button name="itc_update_point_button" class="update_point_btn button-primary">Update</button></form>'
+            "<input type='number' name='point' value='%s'/>" .
+            "<input type='hidden' name='user_id' value='%s'/>" .
+            "<input type='hidden' name='nonce' value='%s'/>" .
+            "<input type='hidden' name='action' value='manually_submit_form'/>" .
+            "<button type='submit' name='update_points' class='button'>Update</button>",
+            esc_attr( $item['accept_total_points'] ),
+            esc_attr( $user_id ),
+            esc_attr( $nonce )
         );
     }
+    
     
 
     // public function column_created_at( $item ) {

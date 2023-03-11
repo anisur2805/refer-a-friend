@@ -76,6 +76,13 @@ div#popmake-3272.popmake  {
     color: #fff;
 }
 
+.itc__reward-points {
+    padding: 10px;
+    background: #f8f8f8;
+    border-radius: 10px;
+    /* background: #000; */
+    /* color: #fff; */
+}
 
 .avwp-av {
     top: 50px !important; 
