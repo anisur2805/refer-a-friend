@@ -20,9 +20,25 @@
                 document.execCommand("copy")
             }
         })
-    }
+    } 
 
-    $(document).ready(function () {
-        
-    });
+    $(document).ready(function() {
+        $('body').on('click', '#place_order.second-btn', function(e){
+            e.preventDefault();
+            $('.itc-av-wrapper').addClass('active-popup')
+            $(this).hide();
+            $('#place_order.alt').css('cssText', 'display: block !important;');
+        });
+
+        $('body').on('click', '.itc-av-wrapper.active-popup .yes', function(e){
+            e.preventDefault();
+            $('.itc-av-wrapper').removeClass('active-popup')
+        });
+
+        $('body').on('click', '.itc-av-wrapper.active-popup .no', function(e){
+            e.preventDefault();
+            $('.itc-av-wrapper').removeClass('active-popup')
+        });
+    })
+
 })(jQuery);

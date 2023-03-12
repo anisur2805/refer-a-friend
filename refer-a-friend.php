@@ -37,7 +37,7 @@ require_once plugin_dir_path(__FILE__) . 'inc/shortcodes.php';
 require_once plugin_dir_path(__FILE__) . 'inc/woocom.php';
 require_once plugin_dir_path(__FILE__) . 'inc/Subscribers_List_Table.php';
 require_once plugin_dir_path(__FILE__) . 'inc/wp-cron.php';
-// require_once plugin_dir_path(__FILE__) . 'inc/popup.php';
+require_once plugin_dir_path(__FILE__) . 'inc/popup.php';
 
 function ic_enqueue_styles() {
     wp_enqueue_style('ic-styles', plugins_url('assets/style.css', __FILE__));
