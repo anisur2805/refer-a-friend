@@ -11,7 +11,7 @@ function ic_copy_to_clipboard( $atts, $content = ''){
     $user_id        = get_current_user_id();
     $site_url       = ic_generate_referral_links();
     $total_rewards  = total_refer_friends();
-    $button_attr    = ( $total_rewards > 5 ) ? 'disabled="true"' : '';
+    $button_attr    = ( $total_rewards >= 5 ) ? 'disabled="true"' : '';
     $output = '';
 
     ob_start();
@@ -23,7 +23,7 @@ function ic_copy_to_clipboard( $atts, $content = ''){
             <input readonly type="text" id="invite_friend" name="invite_friend" class="form-control" placeholder="" value="'. $site_url.'" />
             <button type="button" id="copy-referral-code" class="ic-button" '.$button_attr.'>Copy link to Clipboard</button>
         </div>';
-        if( ( $total_rewards > 5 ) ) {
+        if( ( $total_rewards >= 5 ) ) {
             $output .= '<p class="limit-over">You already referred to 5 persons this year. You can\'t refer anymore in this year.</p>';
         }
     $output .= '</form> </div>';

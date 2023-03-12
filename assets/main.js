@@ -30,6 +30,8 @@
             $('#place_order.alt').css('cssText', 'display: block !important;');
         });
 
+        $('.itc-second-part').hide();
+
         $('body').on('click', '.itc-av-wrapper.active-popup .yes', function(e){
             e.preventDefault();
             $('.itc-av-wrapper').removeClass('active-popup')
@@ -37,7 +39,9 @@
 
         $('body').on('click', '.itc-av-wrapper.active-popup .no', function(e){
             e.preventDefault();
-            $('.itc-av-wrapper').removeClass('active-popup')
+            // $('.itc-av-wrapper').removeClass('active-popup')
+            $('.itc-first-part').hide();
+            $('.itc-second-part').show();
         });
     })
 
