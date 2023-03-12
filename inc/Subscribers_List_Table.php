@@ -18,6 +18,9 @@ class Subscribers_List_Table extends \WP_List_Table {
             'ajax'     => false,
         ] );
         $this->_items = $data;
+
+        // add_action('admin_post_handle_form', [$this, 'handle_admin_post']);
+        
     }
 
     public function get_columns() {
@@ -58,6 +61,10 @@ class Subscribers_List_Table extends \WP_List_Table {
         $data = array_slice( $this->_items, ($current_page - 1) * $per_page, $per_page );
         $this->items = $data;
         $this->_column_headers = [ $this->get_columns(), [], [] ];
+
+        // if (isset($_POST['point'])) {
+        //     $this->manually_submit_form();
+        // }
 
         // $column   = $this->get_columns();
         // $hidden   = [];
@@ -153,13 +160,13 @@ class Subscribers_List_Table extends \WP_List_Table {
         // );
 
         $actions['delete'] = sprintf(
-            '<form method="post" action='. admin_url( 'admin-post.php' ) .'><input type="hidden" name="user_id" value="%s" /><input type="hidden" name="action" value="delete_point" /><button name="itc-delete-point" type="submit" class="delete-point" data-point-id="%s">%s</button></form>',
+            '<form method="post" action='. admin_url( 'admin-post.php' ) .'><input type="hidden" name="nonce" value="%s" /><input type="hidden" name="user_id" value="%s" /><input type="hidden" name="action" value="delete_point" /><button name="itc-delete-point" type="submit" class="delete-point" data-point-id="%s">%s</button></form>',
+            $nonce,
             esc_attr( $user_id ),
             esc_attr( $user_id ),
             __( 'Delete Point', 'itc-refer-a-friend')
         );
 
-        
         return sprintf(
             '%s %s',
             $item['name'],
@@ -167,13 +174,36 @@ class Subscribers_List_Table extends \WP_List_Table {
         );
     }
 
+    public function delete_point() {
+        global $wpdb;
+        if( isset( $_POST['action']) && $_POST['action'] == 'delete_point' ) {
+            $nonce = isset( $_POST['nonce'] ) ? $_POST['nonce'] : '';
+            if( wp_verify_nonce( $nonce, 'delete-point-nc' ) ) {
+                $uId = isset( $_POST['user_id'] ) ? $_POST['user_id'] : 0;
+
+                $wpdb->update(
+                    $wpdb->prefix. 'user_referred',
+                    [
+                        'status'              => 9,
+                        'updated_at'          => date('Y-m-d H:i:s'),
+                    ],
+                    [ 'accepted_user_id'      => $uId ],
+                    [ '%d', '%s' ],
+                    [ '%d' ]
+                );
+            }
+        }
+        wp_redirect( admin_url( 'options-general.php?page=referral-options' ) );
+    }
+    
+
     public function column_update( $item ) {
         $nonce   = wp_create_nonce( 'itc-update-nonce');
         $user_id = $item['id'];
         $point   = $item['accept_total_points'];
     
         return sprintf(
-            "<input type='number' name='point' value='%s'/>" .
+            '<form method="post"></form><input type="number" name="point" value="%s"/>' .
             "<input type='hidden' name='user_id' value='%s'/>" .
             "<input type='hidden' name='nonce' value='%s'/>" .
             "<input type='hidden' name='action' value='manually_submit_form'/>" .
@@ -183,8 +213,10 @@ class Subscribers_List_Table extends \WP_List_Table {
             esc_attr( $nonce )
         );
     }
-    
-    
+
+    public function manually_submit_form() {
+        // wp_redirect( admin_url( 'options-general.php?page=referral-options' ) );
+    }
 
     // public function column_created_at( $item ) {
         // return $item['created_at'];
@@ -206,3 +238,14 @@ class Subscribers_List_Table extends \WP_List_Table {
         return $item[$column_name];
     }
 }
+?>
+<style>
+.delete-point {
+    color: #b32d2e;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+}
+</style>
+<?php
