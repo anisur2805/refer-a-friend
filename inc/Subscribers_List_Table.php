@@ -238,6 +238,8 @@ class Subscribers_List_Table extends \WP_List_Table {
         return $item[$column_name];
     }
 }
+
+add_action('wp_head', function() {
 ?>
 <style>
 .delete-point {
@@ -249,3 +251,4 @@ class Subscribers_List_Table extends \WP_List_Table {
 }
 </style>
 <?php
+});

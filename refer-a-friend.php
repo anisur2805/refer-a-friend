@@ -326,12 +326,12 @@ function ic_user_has_referred() {
         )
     );
 
-    if( $updated_row ) {
-        $old_rewards = get_total_points( $id );
-
+    // need to fix here - after register only then get the user data
+    if( (int) $updated_row->accepted_user_id == $id ) {
         $register_ft = get_user_meta( $id, 'register_ft', true );
 
         if( empty( $register_ft ) ) {
+            
             $wpdb->update(
                 $user_referred_table,
                 [
@@ -344,14 +344,13 @@ function ic_user_has_referred() {
                 [ '%d' ],
                 [ 1 ]
             );
+            
             update_user_meta( $id, 'register_ft', 1 );
         }
     } else {
-
         if ( intval( $total_referred->total ) == 5 ) {
-            // add_user_meta( $user_id, 'refer_limit', 5 );
             return;
-        } 
+        }
         $wpdb->insert( $user_referred_table, $data, ['%d', '%d', '%d', '%s', '%s', '%d', '%d', '%d'] );
     }
 
@@ -481,46 +480,29 @@ if( isset( $_POST['reload_page'])) {
 
 <script>
     var date = new Date();
-    
     var res = false;
 	var nameEQ = "age-reverification";
 	var ca = document.cookie.split(";");
+
 	for(var i=0;i < ca.length;i++) {
 		var c = ca[i];
-		// while (c.charAt(0)==" ") c = c.substring(1,c.length);
-		// if (c.indexOf(nameEQ) == 0) {
-        //     res = c.substring(nameEQ.length,c.length)
-            
-        // } else {
-        //     res = false;
-        // }
-
-        // c.split(";")
         var name = c.split("=")[0]
         res = (name.trim(" ") === nameEQ)
         console.log( c )
 	}
 
-    console.log( {res, ca} )
-
     if( res === false ) {
-        // document.cookie = "age-reverification='' ; expires="+date.toGMTString()+ "; path=/";
         document.cookie = "age-verification='' ; expires="+date.toUTCString()+ "; path=/";
-    } 
-    
-
+    }
 
 </script>
     <?php
-
-    echo $_COOKIE['age-reverification'];
-
     if( ! isset( $_COOKIE['age-reverification'])) {
         run_avwp(); 
         $_COOKIE['age-reverification'] = true;
         ?>
         <script>
-             var now = new Date();
+            var now = new Date();
             var time = now.getTime();
             var expireTime = time + 60*60*24*30;
             now.setTime(expireTime);
