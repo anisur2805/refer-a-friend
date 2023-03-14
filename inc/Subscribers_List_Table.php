@@ -7,7 +7,8 @@ if ( !class_exists( 'WP_List_Table' ) ) {
     require_once ABSPATH . 'wp-admin/includes/class-wp-list-table.php';
 }
 
-add_action( 'admin_post_delete_point', [ 'Subscribers_List_Table', 'delete_point' ]);
+add_action( 'admin_post_delete_point', [ 'Subscribers_List_Table', 'delete_point' ] );
+add_action( 'admin_post_manually_submit_form', [ 'Subscribers_List_Table', 'manually_submit_form' ] );
 
 class Subscribers_List_Table extends \WP_List_Table {
     private $_items;
@@ -62,9 +63,6 @@ class Subscribers_List_Table extends \WP_List_Table {
         $this->items = $data;
         $this->_column_headers = [ $this->get_columns(), [], [] ];
 
-        // if (isset($_POST['point'])) {
-        //     $this->manually_submit_form();
-        // }
 
         // $column   = $this->get_columns();
         // $hidden   = [];
@@ -203,11 +201,11 @@ class Subscribers_List_Table extends \WP_List_Table {
         $point   = $item['accept_total_points'];
     
         return sprintf(
-            '<form method="post"></form><input type="number" name="point" value="%s"/>' .
-            "<input type='hidden' name='user_id' value='%s'/>" .
+            '<form method="post" action='. admin_url( 'admin-post.php' ) .'><input type="number" name="point" value="%s"/>' .
+            "<input type='hidden' name='dId' value='%s'/>" .
             "<input type='hidden' name='nonce' value='%s'/>" .
             "<input type='hidden' name='action' value='manually_submit_form'/>" .
-            "<button type='submit' name='update_points' class='button'>Update</button>",
+            "<button type='submit' name='' class='button'>Update</button></form>",
             esc_attr( $item['accept_total_points'] ),
             esc_attr( $user_id ),
             esc_attr( $nonce )
@@ -215,7 +213,30 @@ class Subscribers_List_Table extends \WP_List_Table {
     }
 
     public function manually_submit_form() {
-        // wp_redirect( admin_url( 'options-general.php?page=referral-options' ) );
+        global $wpdb;
+
+        if( isset( $_POST['action']) && $_POST['action'] == 'manually_submit_form' ) {
+            $nonce = isset( $_POST['nonce'] ) ? $_POST['nonce'] : '';
+            if( ! wp_verify_nonce( $nonce, 'itc-update-nonce' ) ) {
+                return; 
+            }
+
+            $uId    = isset( $_POST['dId'] ) ? $_POST['dId'] : 0;
+            $point  = isset( $_POST['point'] ) ? $_POST['point'] : 0;
+
+            $wpdb->update(
+                $wpdb->prefix. 'user_referred',
+                [
+                    'accept_total_points' => $point,
+                    'updated_at'          => date('Y-m-d H:i:s'),
+                ],
+                [ 'accepted_user_id'      => $uId ],
+                [ '%d', '%s' ],
+                [ '%d' ]
+            );
+        }
+
+        wp_redirect( admin_url( 'options-general.php?page=referral-options' ) );
     }
 
     // public function column_created_at( $item ) {
