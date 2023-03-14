@@ -181,3 +181,21 @@ function itc_update_user_total_points_after_order_completed( $order_id ) {
         $order->add_order_note( 'Discount used - 5 off' );
     }
 }
+
+add_action( 'woocommerce_thankyou', function(){
+    $order_id = 4698;
+    $order = wc_get_order( $order_id );
+    foreach ( $order->get_items() as $item_id => $item ) {
+        $product = $item->get_product();
+        $quantity = $item->get_quantity();
+        $subtotal = $item->get_subtotal(); // Subtotal including tax and discounts
+        $tax = $item->get_total_tax(); // Total tax for the item
+        $total = $item->get_total(); // Total price including tax and discounts
+    
+        // Calculate the actual price of the item excluding tax, billing, and discounts
+        $actual_price = ($subtotal - $tax) / $quantity;
+        
+        // Do something with the actual price
+        echo 'Product ID: ' . $product->get_id() . ' Actual Price: ' . $actual_price . '<br>';
+    }
+});
